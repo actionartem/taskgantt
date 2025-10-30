@@ -53,56 +53,68 @@ export function TaskFilters({
       />
 
       <div className="grid grid-cols-2 gap-2">
-        <Select value={status} onValueChange={onStatusChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Статус" />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={status} onValueChange={onStatusChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Статус" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Статус</span>
+        </div>
 
-        <Select value={assignee} onValueChange={onAssigneeChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Исполнитель" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Все">Все</SelectItem>
-            {settings.executors.map((exec) => (
-              <SelectItem key={exec.id} value={exec.name}>
-                {exec.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={assignee} onValueChange={onAssigneeChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Исполнитель" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Все">Все</SelectItem>
+              {settings.executors.map((exec) => (
+                <SelectItem key={exec.id} value={exec.name}>
+                  {exec.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Исполнитель</span>
+        </div>
 
-        <Select value={tag} onValueChange={onTagChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Тег" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Все">Все</SelectItem>
-            {settings.tags.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={tag} onValueChange={onTagChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Тег" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Все">Все</SelectItem>
+              {settings.tags.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Тег</span>
+        </div>
 
-        <Select value={dateRange} onValueChange={onDateRangeChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Период" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все</SelectItem>
-            <SelectItem value="thisMonth">Этот месяц</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={dateRange} onValueChange={onDateRangeChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Период" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все</SelectItem>
+              <SelectItem value="thisMonth">Этот месяц</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Временной отрезок</span>
+        </div>
       </div>
     </div>
   )
