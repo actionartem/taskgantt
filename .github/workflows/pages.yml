@@ -2,7 +2,8 @@ name: Deploy Next.js to GitHub Pages
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -26,19 +27,15 @@ jobs:
         with:
           node-version: 20
 
-      # ставим pnpm
       - name: Install pnpm
         run: npm install -g pnpm
 
-      # ставим зависимости из pnpm-lock.yaml
       - name: Install deps
-  run: pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
-      # собираем и экспортируем
       - name: Build & Export
         run: pnpm run build:pages
 
-      # заливаем out/ как артефакт для Pages
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
