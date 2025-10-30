@@ -25,14 +25,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
+      # ставим pnpm
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      # ставим зависимости из pnpm-lock.yaml
       - name: Install deps
-        run: npm install
+        run: pnpm install --frozen-lockfile
 
+      # собираем и экспортируем
       - name: Build & Export
-        run: npm run build:pages
+        run: pnpm run build:pages
 
+      # заливаем out/ как артефакт для Pages
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
