@@ -55,7 +55,7 @@ export function TaskFilters({
       <div className="grid grid-cols-2 gap-2">
         <div className="flex items-center gap-2">
           <Select value={status} onValueChange={onStatusChange}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Статус" />
             </SelectTrigger>
             <SelectContent>
@@ -66,12 +66,12 @@ export function TaskFilters({
               ))}
             </SelectContent>
           </Select>
-          <span className="text-sm text-muted-foreground whitespace-nowrap">Статус</span>
+          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Статус</span>
         </div>
 
         <div className="flex items-center gap-2">
           <Select value={assignee} onValueChange={onAssigneeChange}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Исполнитель" />
             </SelectTrigger>
             <SelectContent>
@@ -83,12 +83,12 @@ export function TaskFilters({
               ))}
             </SelectContent>
           </Select>
-          <span className="text-sm text-muted-foreground whitespace-nowrap">Исполнитель</span>
+          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Исполнитель</span>
         </div>
 
         <div className="flex items-center gap-2">
           <Select value={tag} onValueChange={onTagChange}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Тег" />
             </SelectTrigger>
             <SelectContent>
@@ -100,12 +100,12 @@ export function TaskFilters({
               ))}
             </SelectContent>
           </Select>
-          <span className="text-sm text-muted-foreground whitespace-nowrap">Тег</span>
+          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Тег</span>
         </div>
 
         <div className="flex items-center gap-2">
           <Select value={dateRange} onValueChange={onDateRangeChange}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Период" />
             </SelectTrigger>
             <SelectContent>
@@ -113,7 +113,7 @@ export function TaskFilters({
               <SelectItem value="thisMonth">Этот месяц</SelectItem>
             </SelectContent>
           </Select>
-          <span className="text-sm text-muted-foreground whitespace-nowrap">Временной отрезок</span>
+          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Временной отрезок</span>
         </div>
       </div>
     </div>
