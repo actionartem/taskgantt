@@ -11,6 +11,7 @@ import { TaskForm } from "@/components/task-form"
 import { GanttChart } from "@/components/gantt-chart"
 import { Settings } from "@/components/settings"
 import { AuthModal } from "@/components/auth-modal"
+import { ProfileModal } from "@/components/profile-modal"
 import type { Task } from "@/lib/types"
 import { loginPassword, registerPassword } from "@/lib/api"
 
@@ -26,8 +27,9 @@ export default function HomePage() {
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined)
   const [showSettings, setShowSettings] = useState(false)
 
-  // модалку по умолчанию НЕ показываем, пока не проверим localStorage
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+
   const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
 
@@ -35,7 +37,7 @@ export default function HomePage() {
   const [isResizing, setIsResizing] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
-  // при загрузке — пробуем достать юзера
+  // при загрузке — пытаемся взять юзера из localStorage
   useEffect(() => {
     if (typeof window === "undefined") return
     const raw = localStorage.getItem("st_user")
@@ -43,13 +45,12 @@ export default function HomePage() {
       try {
         const u = JSON.parse(raw)
         setCurrentUser(u)
-        setIsAuthModalOpen(false)
         return
       } catch {
         localStorage.removeItem("st_user")
       }
     }
-    // если юзера нет — показываем модалку
+    // если нет юзера — сразу откроем авторизацию
     setIsAuthModalOpen(true)
   }, [])
 
@@ -117,14 +118,8 @@ export default function HomePage() {
     setEditingTask(undefined)
   }
 
-  // логин через БЭК
-  const handleLogin = async ({
-    login,
-    password,
-  }: {
-    login: string
-    password: string
-  }) => {
+  // логин
+  const handleLogin = async ({ login, password }: { login: string; password: string }) => {
     try {
       setAuthError(null)
       const user = await loginPassword(login, password)
@@ -144,7 +139,7 @@ export default function HomePage() {
     }
   }
 
-  // регистрация через БЭК
+  // регистрация
   const handleRegister = async ({
     login,
     password,
@@ -177,15 +172,20 @@ export default function HomePage() {
     <div className="flex h-screen flex-col">
       <Header
         onOpenSettings={() => setShowSettings(true)}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenAuth={() => {
+          if (!currentUser) {
+            // не залогинен → показать логин
+            setIsAuthModalOpen(true)
+          } else {
+            // залогинен → показать профиль
+            setIsProfileModalOpen(true)
+          }
+        }}
         user={currentUser}
       />
 
-      {/* если была ошибка авторизации — покажем вверху */}
       {authError ? (
-        <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">
-          {authError}
-        </div>
+        <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
       ) : null}
 
       <main className="flex-1 overflow-hidden">
@@ -215,12 +215,43 @@ export default function HomePage() {
       <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />
       <Settings open={showSettings} onClose={() => setShowSettings(false)} />
 
+      {/* модалка авторизации */}
       <AuthModal
         open={isAuthModalOpen}
         onOpenChange={setIsAuthModalOpen}
         onLogin={handleLogin}
         onRegister={handleRegister}
       />
+
+      {/* модалка профиля */}
+      {currentUser ? (
+        <ProfileModal
+          open={isProfileModalOpen}
+          onOpenChange={setIsProfileModalOpen}
+          user={currentUser}
+          onUpdated={(u) => {
+            // обновим стейт, чтобы в хедере сразу показалось новое имя
+            setCurrentUser((prev) => (prev ? { ...prev, ...u } : prev))
+            // и в localStorage тоже
+            if (typeof window !== "undefined") {
+              const raw = localStorage.getItem("st_user")
+              if (raw) {
+                try {
+                  const parsed = JSON.parse(raw)
+                  const merged = { ...parsed, ...u }
+                  localStorage.setItem("st_user", JSON.stringify(merged))
+                } catch {
+                  // если не получилось — просто перезапишем
+                  localStorage.setItem(
+                    "st_user",
+                    JSON.stringify({ ...(prev as any), ...u }),
+                  )
+                }
+              }
+            }
+          }}
+        />
+      ) : null}
     </div>
   )
 }
