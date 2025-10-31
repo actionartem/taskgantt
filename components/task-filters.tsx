@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { TaskStatus } from "@/lib/types"
+import type { TaskPriority, TaskStatus } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
 
 interface TaskFiltersProps {
@@ -10,12 +10,12 @@ interface TaskFiltersProps {
   status: TaskStatus | "Все"
   assignee: string
   tag: string
-  dateRange: "all" | "thisMonth"
+  priority: TaskPriority | "Все"
   onSearchChange: (value: string) => void
   onStatusChange: (value: TaskStatus | "Все") => void
   onAssigneeChange: (value: string) => void
   onTagChange: (value: string) => void
-  onDateRangeChange: (value: "all" | "thisMonth") => void
+  onPriorityChange: (value: TaskPriority | "Все") => void
 }
 
 const STATUSES: Array<TaskStatus | "Все"> = [
@@ -29,17 +29,19 @@ const STATUSES: Array<TaskStatus | "Все"> = [
   "завершена",
 ]
 
+const PRIORITIES: TaskPriority[] = ["низкий", "средний", "высокий"]
+
 export function TaskFilters({
   search,
   status,
   assignee,
   tag,
-  dateRange,
+  priority,
   onSearchChange,
   onStatusChange,
   onAssigneeChange,
   onTagChange,
-  onDateRangeChange,
+  onPriorityChange,
 }: TaskFiltersProps) {
   const { settings } = useApp()
 
@@ -104,16 +106,20 @@ export function TaskFilters({
         </div>
 
         <div className="flex items-center gap-2">
-          <Select value={dateRange} onValueChange={onDateRangeChange}>
+          <Select value={priority} onValueChange={onPriorityChange}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Период" />
+              <SelectValue placeholder="Приоритет" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Все</SelectItem>
-              <SelectItem value="thisMonth">Этот месяц</SelectItem>
+              <SelectItem value="Все">Все</SelectItem>
+              {PRIORITIES.map((item) => (
+                <SelectItem key={item} value={item}>
+                  {item.charAt(0).toUpperCase() + item.slice(1)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Временной отрезок</span>
+          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Приоритет</span>
         </div>
       </div>
     </div>

@@ -44,7 +44,7 @@ export interface AppSettings {
   tags: string[]
 }
 
-export type GroupBy = "none" | "assignee" | "status"
+export type GroupBy = "none" | "assignee" | "status" | "priority"
 
 export const STATUS_COLORS: Record<TaskStatus, string> = {
   "не в работе": "#9CA3AF", // серый

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { TaskFilters } from "./task-filters"
 import { TaskItem } from "./task-item"
-import type { Task, TaskStatus } from "@/lib/types"
+import type { Task, TaskPriority, TaskStatus } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
 import { filterTasks, groupTasks } from "@/lib/task-utils"
 
@@ -21,14 +21,14 @@ export function TaskList({ onCreateTask, onEditTask }: TaskListProps) {
   const [status, setStatus] = useState<TaskStatus | "Все">("Все")
   const [assignee, setAssignee] = useState("Все")
   const [tag, setTag] = useState("Все")
-  const [dateRange, setDateRange] = useState<"all" | "thisMonth">("all")
+  const [priority, setPriority] = useState<TaskPriority | "Все">("Все")
 
   const filteredTasks = filterTasks(tasks, {
     search,
     status,
     assignee: assignee === "Все" ? undefined : assignee,
     tag: tag === "Все" ? undefined : tag,
-    dateRange,
+    priority,
   })
 
   const groupedTasks = groupTasks(filteredTasks, groupBy)
@@ -48,12 +48,12 @@ export function TaskList({ onCreateTask, onEditTask }: TaskListProps) {
         status={status}
         assignee={assignee}
         tag={tag}
-        dateRange={dateRange}
+        priority={priority}
         onSearchChange={setSearch}
         onStatusChange={setStatus}
         onAssigneeChange={setAssignee}
         onTagChange={setTag}
-        onDateRangeChange={setDateRange}
+        onPriorityChange={setPriority}
       />
 
       <div className="flex-1 overflow-y-auto">
