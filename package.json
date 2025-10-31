@@ -5,7 +5,7 @@
   "scripts": {
   "dev": "next dev",
   "build": "next build",
-  "build:pages": "next build && next export -o out",
+  "build:pages": "next build",
   "lint": "eslint .",
   "start": "next start"
 },
