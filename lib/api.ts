@@ -68,6 +68,14 @@ export async function getMe(userId: number | string) {
   return request(`/me?user_id=${userId}`);
 }
 
+// запрос на привязку телеграма — получим код и deep-link
+export async function requestTelegramLink(login: string) {
+  return request("/auth/telegram/request", {
+    method: "POST",
+    body: JSON.stringify({ login }),
+  });
+}
+
 /* ------------------ USERS ------------------ */
 
 export async function getUsers() {
@@ -93,12 +101,15 @@ export async function getBoards(userId?: number | string) {
 
 /* ------------------ TASKS ------------------ */
 
-export async function getTasks(boardId: number | string, params?: {
-  assignee_id?: number | string;
-  status?: string;
-  priority?: string;
-  tag_id?: number | string;
-}) {
+export async function getTasks(
+  boardId: number | string,
+  params?: {
+    assignee_id?: number | string;
+    status?: string;
+    priority?: string;
+    tag_id?: number | string;
+  }
+) {
   const search = new URLSearchParams();
   if (params?.assignee_id) search.set("assignee_id", String(params.assignee_id));
   if (params?.status) search.set("status", params.status);
@@ -163,20 +174,29 @@ export async function createBoardTag(
   });
 }
 
-export async function deleteBoardTag(boardId: number | string, tagId: number | string) {
+export async function deleteBoardTag(
+  boardId: number | string,
+  tagId: number | string
+) {
   return request(`/boards/${boardId}/tags/${tagId}`, {
     method: "DELETE",
   });
 }
 
-export async function attachTagToTask(taskId: number | string, tagId: number | string) {
+export async function attachTagToTask(
+  taskId: number | string,
+  tagId: number | string
+) {
   return request(`/tasks/${taskId}/tags`, {
     method: "POST",
     body: JSON.stringify({ tag_id: tagId }),
   });
 }
 
-export async function detachTagFromTask(taskId: number | string, tagId: number | string) {
+export async function detachTagFromTask(
+  taskId: number | string,
+  tagId: number | string
+) {
   return request(`/tasks/${taskId}/tags/${tagId}`, {
     method: "DELETE",
   });
