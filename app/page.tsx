@@ -7,12 +7,20 @@ import { TaskList } from "@/components/task-list"
 import { TaskForm } from "@/components/task-form"
 import { GanttChart } from "@/components/gantt-chart"
 import { Settings } from "@/components/settings"
+import { AuthModal } from "@/components/auth-modal"
 import type { Task } from "@/lib/types"
+
+interface AuthenticatedUser {
+  login: string
+  name: string
+}
 
 export default function HomePage() {
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined)
   const [showSettings, setShowSettings] = useState(false)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(true)
+  const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(null)
   const [leftWidth, setLeftWidth] = useState(50)
   const [isResizing, setIsResizing] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -87,12 +95,20 @@ export default function HomePage() {
     setEditingTask(undefined)
   }
 
+  const handleLogin = ({ login }: { login: string; password: string }) => {
+    setCurrentUser({ login, name: login })
+  }
+
+  const handleRegister = ({ login, name }: { login: string; password: string; name: string }) => {
+    setCurrentUser({ login, name })
+  }
+
   return (
-    <div className="flex flex-col h-screen">
-      <Header onOpenSettings={() => setShowSettings(true)} />
+    <div className="flex h-screen flex-col">
+      <Header onOpenSettings={() => setShowSettings(true)} onOpenAuth={() => setIsAuthModalOpen(true)} user={currentUser} />
 
       <main className="flex-1 overflow-hidden">
-        <div ref={containerRef} className="h-full flex items-stretch p-4">
+        <div ref={containerRef} className="flex h-full items-stretch p-4">
           <div
             className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
             style={{ flexBasis: `${leftWidth}%` }}
@@ -117,6 +133,16 @@ export default function HomePage() {
 
       <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />
       <Settings open={showSettings} onClose={() => setShowSettings(false)} />
+      <AuthModal
+        open={isAuthModalOpen}
+        onOpenChange={setIsAuthModalOpen}
+        onLogin={(data) => {
+          handleLogin(data)
+        }}
+        onRegister={(data) => {
+          handleRegister(data)
+        }}
+      />
     </div>
   )
 }
