@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "build:pages": "next build",
-    "lint": "eslint .",
-    "start": "next start"
-  },
+  "dev": "next dev",
+  "build": "next build",
+  "build:pages": "next build && next export -o out",
+  "lint": "eslint .",
+  "start": "next start"
+},
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "1.2.2",
