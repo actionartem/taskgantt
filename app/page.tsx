@@ -5,6 +5,7 @@ import type {
   MouseEvent as ReactMouseEvent,
   TouchEvent as ReactTouchEvent,
 } from "react"
+
 import { Header } from "@/components/header"
 import { TaskList } from "@/components/task-list"
 import { TaskForm } from "@/components/task-form"
@@ -37,7 +38,7 @@ export default function HomePage() {
   const [isResizing, setIsResizing] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
-  // при загрузке — пытаемся взять юзера из localStorage
+  // при загрузке — читаем юзера
   useEffect(() => {
     if (typeof window === "undefined") return
     const raw = localStorage.getItem("st_user")
@@ -50,7 +51,7 @@ export default function HomePage() {
         localStorage.removeItem("st_user")
       }
     }
-    // если нет юзера — сразу откроем авторизацию
+    // если нет юзера — сразу показать авторизацию
     setIsAuthModalOpen(true)
   }, [])
 
@@ -118,7 +119,7 @@ export default function HomePage() {
     setEditingTask(undefined)
   }
 
-  // логин
+  // ЛОГИН
   const handleLogin = async ({ login, password }: { login: string; password: string }) => {
     try {
       setAuthError(null)
@@ -139,7 +140,7 @@ export default function HomePage() {
     }
   }
 
-  // регистрация
+  // РЕГИСТРАЦИЯ
   const handleRegister = async ({
     login,
     password,
@@ -168,19 +169,22 @@ export default function HomePage() {
     }
   }
 
+  // КНОПКА В ХЕДЕРЕ
+  const handleHeaderUserClick = () => {
+    if (!currentUser) {
+      // гость → открываем логин
+      setIsAuthModalOpen(true)
+    } else {
+      // залогинен → открываем профиль
+      setIsProfileModalOpen(true)
+    }
+  }
+
   return (
     <div className="flex h-screen flex-col">
       <Header
         onOpenSettings={() => setShowSettings(true)}
-        onOpenAuth={() => {
-          if (!currentUser) {
-            // не залогинен → показать логин
-            setIsAuthModalOpen(true)
-          } else {
-            // залогинен → показать профиль
-            setIsProfileModalOpen(true)
-          }
-        }}
+        onOpenAuth={handleHeaderUserClick}
         user={currentUser}
       />
 
@@ -215,43 +219,39 @@ export default function HomePage() {
       <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />
       <Settings open={showSettings} onClose={() => setShowSettings(false)} />
 
-      {/* модалка авторизации */}
-      <AuthModal
-        open={isAuthModalOpen}
-        onOpenChange={setIsAuthModalOpen}
-        onLogin={handleLogin}
-        onRegister={handleRegister}
-      />
+      {/* 1) модалка авторизации — показываем ТОЛЬКО если юзера НЕТ */}
+      {!currentUser && (
+        <AuthModal
+          open={isAuthModalOpen}
+          onOpenChange={setIsAuthModalOpen}
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+        />
+      )}
 
-      {/* модалка профиля */}
-      {currentUser ? (
+      {/* 2) модалка профиля — только если юзер есть */}
+      {currentUser && (
         <ProfileModal
           open={isProfileModalOpen}
           onOpenChange={setIsProfileModalOpen}
           user={currentUser}
           onUpdated={(u) => {
-            // обновим стейт, чтобы в хедере сразу показалось новое имя
             setCurrentUser((prev) => (prev ? { ...prev, ...u } : prev))
-            // и в localStorage тоже
             if (typeof window !== "undefined") {
               const raw = localStorage.getItem("st_user")
               if (raw) {
                 try {
                   const parsed = JSON.parse(raw)
-                  const merged = { ...parsed, ...u }
-                  localStorage.setItem("st_user", JSON.stringify(merged))
+                  localStorage.setItem("st_user", JSON.stringify({ ...parsed, ...u }))
                 } catch {
-                  // если не получилось — просто перезапишем
-                  localStorage.setItem(
-                    "st_user",
-                    JSON.stringify({ ...(prev as any), ...u }),
-                  )
+                  // если сломано — просто перезапишем
+                  localStorage.setItem("st_user", JSON.stringify(u))
                 }
               }
             }
           }}
         />
-      ) : null}
+      )}
     </div>
   )
 }
