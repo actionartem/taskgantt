@@ -169,6 +169,16 @@ export default function HomePage() {
     }
   }
 
+  const handleLogout = () => {
+    setAuthError(null)
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("st_user")
+    }
+    setCurrentUser(null)
+    setIsProfileModalOpen(false)
+    setIsAuthModalOpen(true)
+  }
+
   // КНОПКА В ХЕДЕРЕ
   const handleHeaderUserClick = () => {
     if (!currentUser) {
@@ -235,6 +245,7 @@ export default function HomePage() {
           open={isProfileModalOpen}
           onOpenChange={setIsProfileModalOpen}
           user={currentUser}
+          onLogout={handleLogout}
           onUpdated={(u) => {
             setCurrentUser((prev) => (prev ? { ...prev, ...u } : prev))
             if (typeof window !== "undefined") {

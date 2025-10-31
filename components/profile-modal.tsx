@@ -23,9 +23,10 @@ interface ProfileModalProps {
     role_text?: string
   }
   onUpdated?: (u: { name: string; role_text?: string }) => void
+  onLogout?: () => void
 }
 
-export function ProfileModal({ open, onOpenChange, user, onUpdated }: ProfileModalProps) {
+export function ProfileModal({ open, onOpenChange, user, onUpdated, onLogout }: ProfileModalProps) {
   const [name, setName] = useState(user.name)
   const [roleText, setRoleText] = useState(user.role_text || "")
   const [loading, setLoading] = useState(false)
@@ -121,13 +122,22 @@ export function ProfileModal({ open, onOpenChange, user, onUpdated }: ProfileMod
 
           {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleSave} disabled={loading}>
-              {loading ? "Сохраняю..." : "Сохранить"}
-            </Button>
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+            {onLogout ? (
+              <Button variant="destructive" type="button" onClick={onLogout}>
+                Выйти
+              </Button>
+            ) : null}
+            <div
+              className={`flex justify-end gap-2 sm:justify-end ${onLogout ? "" : "sm:ml-auto"}`}
+            >
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleSave} disabled={loading}>
+                {loading ? "Сохраняю..." : "Сохранить"}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
