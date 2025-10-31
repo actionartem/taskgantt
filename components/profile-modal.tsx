@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Eye, EyeOff } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -26,23 +27,29 @@ interface ProfileModalProps {
   onLogout?: () => void
 }
 
-export function ProfileModal({ open, onOpenChange, user, onUpdated, onLogout }: ProfileModalProps) {
+export function ProfileModal({
+  open,
+  onOpenChange,
+  user,
+  onUpdated,
+  onLogout,
+}: ProfileModalProps) {
   const [name, setName] = useState(user.name)
   const [roleText, setRoleText] = useState(user.role_text || "")
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // если модалку открыли для другого юзера — обновим поля
   useEffect(() => {
     setName(user.name)
     setRoleText(user.role_text || "")
+    setShowPassword(false)
   }, [user])
 
   async function handleSave() {
     setError(null)
     setLoading(true)
     try {
-      // пароль и телеграм сейчас не шлём — в бэке у нас пока PATCH /users/:id только name + role_text
       if (user.id) {
         await updateUser(user.id, {
           name,
@@ -83,16 +90,24 @@ export function ProfileModal({ open, onOpenChange, user, onUpdated, onLogout }: 
             <Input id="profile-login" value={user.login} disabled className="bg-muted" />
           </div>
 
-          {/* Поле пароля пока как заглушка */}
           <div className="space-y-2">
             <Label htmlFor="profile-password">Пароль</Label>
-            <Input
-              id="profile-password"
-              type="password"
-              value="********"
-              disabled
-              className="bg-muted"
-            />
+            <div className="relative">
+              <Input
+                id="profile-password"
+                type={showPassword ? "text" : "password"}
+                value="********"
+                disabled
+                className="pr-10 bg-muted"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((p) => !p)}
+                className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             <p className="text-xs text-muted-foreground">
               Смену пароля добавим, когда сделаем эндпоинт.
             </p>
@@ -128,9 +143,8 @@ export function ProfileModal({ open, onOpenChange, user, onUpdated, onLogout }: 
                 Выйти
               </Button>
             ) : null}
-            <div
-              className={`flex justify-end gap-2 sm:justify-end ${onLogout ? "" : "sm:ml-auto"}`}
-            >
+
+            <div className="flex gap-2 sm:justify-end">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Отмена
               </Button>
