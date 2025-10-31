@@ -1,40 +1,21 @@
 "use client"
 
-import { type ChangeEvent, type FormEvent, useState } from "react"
+import { Moon, SettingsIcon, Sun, User } from "lucide-react"
 
-import { Eye, EyeOff, Moon, Sun, SettingsIcon, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { useApp } from "@/contexts/app-context"
 import type { GroupBy } from "@/lib/types"
 
 interface HeaderProps {
   onOpenSettings: () => void
+  onOpenAuth: () => void
+  user?: { name: string; login: string } | null
 }
 
-export function Header({ onOpenSettings }: HeaderProps) {
+export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
   const { tasks, theme, toggleTheme, groupBy, setGroupBy } = useApp()
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false)
-  const [isTelegramLinked, setIsTelegramLinked] = useState(false)
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-  const [userForm, setUserForm] = useState({
-    name: "Иван Петров",
-    login: "ivan.petrov",
-    password: "Пароль123",
-    role: "Администратор",
-    telegram: "@ivanpetrov",
-  })
 
   const totalTasks = tasks.length
   const inProgressTasks = tasks.filter(
@@ -47,24 +28,10 @@ export function Header({ onOpenSettings }: HeaderProps) {
   ).length
   const completedTasks = tasks.filter((task) => task.status === "завершена").length
 
-  const handleSaveUser = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setIsUserModalOpen(false)
-  }
-
-  const handleFieldChange = (field: "name" | "login" | "password" | "role") =>
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setUserForm((previous) => ({ ...previous, [field]: event.target.value }))
-    }
-
-  const handleTelegramLink = () => {
-    setIsTelegramLinked(true)
-  }
-
   return (
     <header className="border-b bg-card">
       <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Система управления задачами</h1>
 
           <div className="flex items-center gap-2">
@@ -88,13 +55,9 @@ export function Header({ onOpenSettings }: HeaderProps) {
               {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </Button>
 
-            <Button
-              variant="secondary"
-              className="flex items-center gap-2 px-3"
-              onClick={() => setIsUserModalOpen(true)}
-            >
+            <Button variant="secondary" className="flex items-center gap-2 px-3" onClick={onOpenAuth}>
               <User className="h-4 w-4" />
-              <span className="whitespace-nowrap text-sm font-medium">{userForm.name}</span>
+              <span className="whitespace-nowrap text-sm font-medium">{user?.name ?? "Войти"}</span>
             </Button>
           </div>
         </div>
@@ -111,81 +74,6 @@ export function Header({ onOpenSettings }: HeaderProps) {
           </Badge>
         </div>
       </div>
-
-      <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Профиль пользователя</DialogTitle>
-            <DialogDescription>
-              Здесь можно изменить основные данные аккаунта. Пока данные заполняются статически, позже они будут загружаться с
-              сервера.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form id="user-profile-form" onSubmit={handleSaveUser} className="space-y-4">
-            <div className="grid gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="user-name">Имя</Label>
-                <Input id="user-name" value={userForm.name} onChange={handleFieldChange("name")} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="user-login">Логин</Label>
-                <Input id="user-login" value={userForm.login} onChange={handleFieldChange("login")} disabled />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="user-password">Пароль</Label>
-                <div className="relative">
-                  <Input
-                    id="user-password"
-                    type={isPasswordVisible ? "text" : "password"}
-                    value={userForm.password}
-                    onChange={handleFieldChange("password")}
-                    className="pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2"
-                    onClick={() => setIsPasswordVisible((previous) => !previous)}
-                  >
-                    {isPasswordVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    <span className="sr-only">{isPasswordVisible ? "Скрыть пароль" : "Показать пароль"}</span>
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="user-role">Роль</Label>
-                <Input id="user-role" value={userForm.role} onChange={handleFieldChange("role")} />
-              </div>
-
-              <div className="flex items-center justify-between rounded-md border p-3">
-                <div>
-                  <p className="text-sm font-medium">Telegram</p>
-                  <p className="text-sm text-muted-foreground">
-                    {isTelegramLinked ? `Привязан: ${userForm.telegram}` : "Еще не привязан"}
-                  </p>
-                </div>
-                <Button type="button" variant="outline" onClick={handleTelegramLink} disabled={isTelegramLinked}>
-                  Привязать Telegram
-                </Button>
-              </div>
-            </div>
-          </form>
-
-          <DialogFooter>
-            <Button variant="outline" type="button" onClick={() => setIsUserModalOpen(false)}>
-              Отмена
-            </Button>
-            <Button type="submit" form="user-profile-form">
-              Сохранить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </header>
   )
 }
