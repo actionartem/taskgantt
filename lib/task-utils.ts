@@ -1,6 +1,6 @@
 // Утилиты для работы с задачами
 
-import type { Task, TaskStatus, StatusChangeLog } from "./types"
+import type { Task, TaskPriority, TaskStatus, StatusChangeLog, GroupBy } from "./types"
 
 export function generateTaskId(): number {
   // Генерация 5-значного ID
@@ -28,7 +28,7 @@ export function filterTasks(
     status?: TaskStatus | "Все"
     assignee?: string
     tag?: string
-    dateRange?: "all" | "thisMonth"
+    priority?: TaskPriority | "Все"
   },
 ): Task[] {
   return tasks.filter((task) => {
@@ -55,20 +55,16 @@ export function filterTasks(
       if (!task.tags.includes(filters.tag)) return false
     }
 
-    // Фильтр по дате
-    if (filters.dateRange === "thisMonth" && task.startDate) {
-      const now = new Date()
-      const taskDate = new Date(task.startDate)
-      if (taskDate.getMonth() !== now.getMonth() || taskDate.getFullYear() !== now.getFullYear()) {
-        return false
-      }
+    // Фильтр по приоритету
+    if (filters.priority && filters.priority !== "Все") {
+      if (task.priority !== filters.priority) return false
     }
 
     return true
   })
 }
 
-export function groupTasks(tasks: Task[], groupBy: "none" | "assignee" | "status"): Record<string, Task[]> {
+export function groupTasks(tasks: Task[], groupBy: GroupBy): Record<string, Task[]> {
   if (groupBy === "none") {
     return { all: tasks }
   }
@@ -76,7 +72,15 @@ export function groupTasks(tasks: Task[], groupBy: "none" | "assignee" | "status
   const grouped: Record<string, Task[]> = {}
 
   tasks.forEach((task) => {
-    const key = groupBy === "assignee" ? task.assignee || "Без исполнителя" : task.status
+    let key: string
+
+    if (groupBy === "assignee") {
+      key = task.assignee || "Без исполнителя"
+    } else if (groupBy === "status") {
+      key = task.status
+    } else {
+      key = task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : "Без приоритета"
+    }
 
     if (!grouped[key]) {
       grouped[key] = []

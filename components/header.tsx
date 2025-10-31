@@ -40,6 +40,7 @@ export function Header({ onOpenSettings }: HeaderProps) {
                 <SelectItem value="none">Без группировки</SelectItem>
                 <SelectItem value="assignee">По исполнителю</SelectItem>
                 <SelectItem value="status">По статусу</SelectItem>
+                <SelectItem value="priority">По приоритету</SelectItem>
               </SelectContent>
             </Select>
 
