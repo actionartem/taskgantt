@@ -1,20 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  
   output: 'export',
-
-  
   distDir: 'out',
-
-  
-  basePath: '/taskgantt',
-
- 
+  // ❗️УБРАЛИ basePath
   images: {
     unoptimized: true,
   },
-
-  
   typescript: {
     ignoreBuildErrors: true,
   },
