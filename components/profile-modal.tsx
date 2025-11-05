@@ -22,6 +22,7 @@ interface ProfileModalProps {
     login: string
     name: string
     role_text?: string
+    telegram_id?: string | number | null // ← добавили
   }
   onUpdated?: (u: { name: string; role_text?: string }) => void
   onLogout?: () => void
@@ -40,15 +41,18 @@ export function ProfileModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // для телеграма
+  // Telegram UI-состояния
   const [tgLoading, setTgLoading] = useState(false)
   const [tgCode, setTgCode] = useState<string | null>(null)
   const [tgLink, setTgLink] = useState<string | null>(null)
+
+  const isTelegramLinked = !!user?.telegram_id // ← ключевой флаг
 
   useEffect(() => {
     setName(user.name)
     setRoleText(user.role_text || "")
     setShowPassword(false)
+    // при смене пользователя очищаем временные данные запроса кода
     setTgCode(null)
     setTgLink(null)
   }, [user])
@@ -73,12 +77,13 @@ export function ProfileModal({
   }
 
   async function handleTelegramClick() {
+    if (isTelegramLinked) return // уже привязан — ничего не делаем
     if (!user.login) return
     setTgLoading(true)
     setError(null)
     try {
       const resp = await requestTelegramLink(user.login)
-      // бэк теперь отдаёт: { ok, user_id, login, code, telegram_deeplink }
+      // { ok, user_id, login, code, telegram_deeplink }
       setTgCode(resp.code || null)
       setTgLink(resp.telegram_deeplink || null)
     } catch (e: any) {
@@ -162,7 +167,9 @@ export function ProfileModal({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">Telegram</p>
-                {tgCode ? (
+                {isTelegramLinked ? (
+                  <p className="text-xs text-muted-foreground">Привязан</p>
+                ) : tgCode ? (
                   <p className="text-xs text-muted-foreground">
                     Код: <span className="font-mono">{tgCode}</span> (10 минут)
                   </p>
@@ -175,13 +182,19 @@ export function ProfileModal({
                 size="sm"
                 type="button"
                 onClick={handleTelegramClick}
-                disabled={tgLoading}
+                disabled={tgLoading || isTelegramLinked}
+                className={isTelegramLinked ? "opacity-60 cursor-not-allowed" : ""}
               >
-                {tgLoading ? "Запрос..." : "Привязать Telegram"}
+                {isTelegramLinked
+                  ? "Telegram привязан"
+                  : tgLoading
+                  ? "Запрос..."
+                  : "Привязать Telegram"}
               </Button>
             </div>
 
-            {tgLink ? (
+            {/* Ссылку и код показываем только если НЕ привязан */}
+            {!isTelegramLinked && tgLink ? (
               <Button
                 type="button"
                 variant="ghost"
