@@ -11,8 +11,14 @@ import type { GroupBy } from "@/lib/types"
 
 interface HeaderProps {
   onOpenSettings: () => void
-  onOpenAuth: () => void
-  user?: { name: string; login: string } | null
+  onOpenAuth: () => void // используем и для входа, и для профиля
+  user?: {
+    id?: number
+    name: string
+    login: string
+    role_text?: string
+    telegram_id?: string | null // <-- добавлено, чтобы далее пробрасывать в модалку
+  } | null
 }
 
 export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
