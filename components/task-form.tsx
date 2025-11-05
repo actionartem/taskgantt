@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,6 +34,8 @@ const PRIORITIES: TaskPriority[] = ["низкий", "средний", "высо�
 
 export function TaskForm({ task, open, onClose }: TaskFormProps) {
   const { addTask, updateTask, settings } = useApp()
+
+  // основная форма
   const [formData, setFormData] = useState<Partial<Task>>({
     id: generateTaskId(),
     title: "",
@@ -47,11 +49,37 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
     tags: [],
     statusLog: [],
   })
+
+  // выбранный исполнитель (id из БД users)
+  const [selectedExecutorId, setSelectedExecutorId] = useState<string>("")
+
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Быстрый поиск имени исполнителя по id
+  const executorNameById = useMemo(() => {
+    const map = new Map<string, string>()
+    settings.executors.forEach((e) => map.set(String(e.id), e.name))
+    return map
+  }, [settings.executors])
+
+  // Когда открываем/меняем задачу — инициализируем форму
   useEffect(() => {
     if (task) {
       setFormData(task)
+      // если пришёл id исполнителя (на будущее), используем его;
+      // иначе пытаемся найти по имени
+      const incomingId =
+        // @ts-expect-error поддержка кастомного поля до полной типизации
+        (task as any).assignee_user_id != null ? String((task as any).assignee_user_id) : ""
+
+      if (incomingId) {
+        setSelectedExecutorId(incomingId)
+      } else if (task.assignee) {
+        const found = settings.executors.find((e) => e.name === task.assignee)
+        setSelectedExecutorId(found ? String(found.id) : "")
+      } else {
+        setSelectedExecutorId("")
+      }
     } else {
       setFormData({
         id: generateTaskId(),
@@ -66,9 +94,11 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
         tags: [],
         statusLog: [],
       })
+      setSelectedExecutorId("")
     }
     setErrors({})
-  }, [task, open])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task, open, settings.executors])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -87,21 +117,31 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
       return
     }
 
+    // вычисляем имя исполнителя по выбранному id
+    const assigneeName = selectedExecutorId ? executorNameById.get(selectedExecutorId) || "" : ""
+
+    // готовим полезную нагрузку: старое поле assignee (имя) + скрытое assignee_user_id
+    const payload: Partial<Task> & { [k: string]: unknown } = {
+      ...formData,
+      assignee: assigneeName || "", // для текущего локального UI
+    }
+    payload.assignee_user_id = selectedExecutorId ? Number(selectedExecutorId) : null // на будущее, для API
+
     if (task) {
-      updateTask(task.id, formData as Task)
+      updateTask(task.id, payload as Task)
     } else {
-      addTask(formData as Task)
+      addTask(payload as Task)
     }
 
     onClose()
   }
 
   const handleTagToggle = (tag: string) => {
-    const currentTags = formData.tags || []
-    if (currentTags.includes(tag)) {
-      setFormData({ ...formData, tags: currentTags.filter((t) => t !== tag) })
+    const current = formData.tags || []
+    if (current.includes(tag)) {
+      setFormData({ ...formData, tags: current.filter((t) => t !== tag) })
     } else {
-      setFormData({ ...formData, tags: [...currentTags, tag] })
+      setFormData({ ...formData, tags: [...current, tag] })
     }
   }
 
@@ -229,19 +269,28 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="assignee">Исполнитель</Label>
-            <Select value={formData.assignee} onValueChange={(value) => setFormData({ ...formData, assignee: value })}>
+            <Select
+              value={selectedExecutorId || ""}
+              onValueChange={(value) => setSelectedExecutorId(value)}
+            >
               <SelectTrigger id="assignee">
                 <SelectValue placeholder="Выберите исполнителя" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Не назначен</SelectItem>
+                <SelectItem value="">Не назначен</SelectItem>
                 {settings.executors.map((exec) => (
-                  <SelectItem key={exec.id} value={exec.name}>
+                  <SelectItem key={exec.id} value={String(exec.id)}>
                     {exec.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {/* Подсказка — показываем имя выбранного исполнителя */}
+            {selectedExecutorId && (
+              <p className="text-xs text-muted-foreground">
+                Выбран: {executorNameById.get(selectedExecutorId)}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -263,28 +312,6 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               )}
             </div>
           </div>
-
-          {task && task.statusLog.length > 0 && (
-            <div className="space-y-2">
-              <Label>История изменений (последние 5)</Label>
-              <div className="space-y-1 text-xs">
-                {task.statusLog
-                  .slice(-5)
-                  .reverse()
-                  .map((log, index) => (
-                    <div key={index} className="p-2 bg-muted rounded">
-                      <span className="text-muted-foreground">{new Date(log.datetime).toLocaleString("ru-RU")}</span>
-                      {" — "}
-                      <span>
-                        {log.oldStatus} → {log.newStatus}
-                      </span>
-                      {" — "}
-                      <span className="text-muted-foreground">{log.user}</span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
