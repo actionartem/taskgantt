@@ -1,7 +1,6 @@
 "use client"
 
 import { Moon, SettingsIcon, Sun, User } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
@@ -10,8 +9,14 @@ import type { GroupBy } from "@/lib/types"
 
 interface HeaderProps {
   onOpenSettings: () => void
-  onOpenAuth: () => void
-  user?: { name: string; login: string } | null
+  onOpenAuth: () => void // используем и для входа, и для профиля
+  user?: {
+    id?: number
+    name: string
+    login: string
+    role_text?: string
+    telegram_id?: string | null // <-- добавлено, чтобы далее пробрасывать в модалку
+  } | null
 }
 
 export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
@@ -55,9 +60,16 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
               {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </Button>
 
-            <Button variant="secondary" className="flex items-center gap-2 px-3" onClick={onOpenAuth}>
+            <Button
+              variant="secondary"
+              className="flex items-center gap-2 px-3"
+              onClick={onOpenAuth}
+              title={user ? "Профиль" : "Войти"}
+            >
               <User className="h-4 w-4" />
-              <span className="whitespace-nowrap text-sm font-medium">{user?.name ?? "Войти"}</span>
+              <span className="whitespace-nowrap text-sm font-medium">
+                {user?.name ?? "Войти"}
+              </span>
             </Button>
           </div>
         </div>
