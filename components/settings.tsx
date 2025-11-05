@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Plus, Trash2, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import type { Executor } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
 
+// API
+import { API_BASE, getUsers, createUser, updateUser } from "@/lib/api"
+
 interface SettingsProps {
   open: boolean
   onClose: () => void
@@ -18,46 +21,107 @@ interface SettingsProps {
 
 export function Settings({ open, onClose }: SettingsProps) {
   const { settings, setSettings } = useApp()
+
   const [executorForm, setExecutorForm] = useState<Partial<Executor>>({ name: "", role: "" })
   const [editingExecutor, setEditingExecutor] = useState<string | null>(null)
+
   const [newTag, setNewTag] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [listLoading, setListLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleAddExecutor = () => {
-    if (!executorForm.name?.trim()) return
-
-    const newExecutor: Executor = {
-      id: Date.now().toString(),
-      name: executorForm.name,
-      role: executorForm.role,
+  // --- helpers ---
+  async function deleteUserApi(id: number | string) {
+    const res = await fetch(`${API_BASE}/users/${id}`, { method: "DELETE", headers: { "Content-Type": "application/json" } })
+    if (!res.ok) {
+      let msg = `Delete failed: ${res.status}`
+      try {
+        const data = await res.json()
+        if ((data as any)?.error) msg = (data as any).error
+      } catch {
+        const t = await res.text()
+        if (t) msg = t
+      }
+      throw new Error(msg)
     }
-
-    setSettings({
-      ...settings,
-      executors: [...settings.executors, newExecutor],
-    })
-
-    setExecutorForm({ name: "", role: "" })
   }
 
-  const handleUpdateExecutor = () => {
-    if (!executorForm.name?.trim() || !editingExecutor) return
+  // Загрузка пользователей из БД -> settings.executors
+  useEffect(() => {
+    if (!open) return
+    setListLoading(true)
+    setError(null)
+    getUsers()
+      .then((users) => {
+        const mapped: Executor[] = users.map((u) => ({
+          id: String(u.id),
+          name: u.name,
+          role: u.role_text || "",
+        }))
+        setSettings({ ...settings, executors: mapped })
+      })
+      .catch((e: any) => setError(e?.message || "Не удалось загрузить исполнителей"))
+      .finally(() => setListLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
-    setSettings({
-      ...settings,
-      executors: settings.executors.map((exec) =>
-        exec.id === editingExecutor ? { ...exec, name: executorForm.name!, role: executorForm.role } : exec,
-      ),
-    })
+  // --- Executors CRUD (через БД) ---
+  const handleAddExecutor = async () => {
+    const name = executorForm.name?.trim()
+    const role = (executorForm.role || "").trim()
+    if (!name) return
 
-    setExecutorForm({ name: "", role: "" })
-    setEditingExecutor(null)
+    setLoading(true)
+    setError(null)
+    try {
+      const created = await createUser(name, role)
+      const newExec: Executor = { id: String(created.id), name, role }
+      setSettings({ ...settings, executors: [...settings.executors, newExec] })
+      setExecutorForm({ name: "", role: "" })
+    } catch (e: any) {
+      setError(e?.message || "Не удалось создать исполнителя")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleDeleteExecutor = (id: string) => {
-    setSettings({
-      ...settings,
-      executors: settings.executors.filter((exec) => exec.id !== id),
-    })
+  const handleUpdateExecutor = async () => {
+    const name = executorForm.name?.trim()
+    if (!name || !editingExecutor) return
+
+    setLoading(true)
+    setError(null)
+    try {
+      await updateUser(editingExecutor, { name, role_text: executorForm.role || "" })
+      setSettings({
+        ...settings,
+        executors: settings.executors.map((exec) =>
+          exec.id === editingExecutor ? { ...exec, name, role: executorForm.role || "" } : exec,
+        ),
+      })
+      setExecutorForm({ name: "", role: "" })
+      setEditingExecutor(null)
+    } catch (e: any) {
+      setError(e?.message || "Не удалось обновить исполнителя")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteExecutor = async (id: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      await deleteUserApi(id)
+      setSettings({
+        ...settings,
+        executors: settings.executors.filter((exec) => exec.id !== id),
+      })
+    } catch (e: any) {
+      setError(e?.message || "Не удалось удалить исполнителя")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleEditExecutor = (executor: Executor) => {
@@ -65,23 +129,16 @@ export function Settings({ open, onClose }: SettingsProps) {
     setEditingExecutor(executor.id)
   }
 
+  // --- Tags (пока локально, как было) ---
   const handleAddTag = () => {
     if (!newTag.trim()) return
     if (settings.tags.includes(newTag.trim())) return
-
-    setSettings({
-      ...settings,
-      tags: [...settings.tags, newTag.trim()],
-    })
-
+    setSettings({ ...settings, tags: [...settings.tags, newTag.trim()] })
     setNewTag("")
   }
 
   const handleDeleteTag = (tag: string) => {
-    setSettings({
-      ...settings,
-      tags: settings.tags.filter((t) => t !== tag),
-    })
+    setSettings({ ...settings, tags: settings.tags.filter((t) => t !== tag) })
   }
 
   return (
@@ -102,7 +159,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                   <Label htmlFor="executor-name">Имя исполнителя</Label>
                   <Input
                     id="executor-name"
-                    value={executorForm.name}
+                    value={executorForm.name || ""}
                     onChange={(e) => setExecutorForm({ ...executorForm, name: e.target.value })}
                     placeholder="Иван Иванов"
                   />
@@ -112,14 +169,19 @@ export function Settings({ open, onClose }: SettingsProps) {
                   <Label htmlFor="executor-role">Роль (опционально)</Label>
                   <Input
                     id="executor-role"
-                    value={executorForm.role}
+                    value={executorForm.role || ""}
                     onChange={(e) => setExecutorForm({ ...executorForm, role: e.target.value })}
                     placeholder="Разработчик"
                   />
                 </div>
               </div>
 
-              <Button onClick={editingExecutor ? handleUpdateExecutor : handleAddExecutor} size="sm" className="w-full">
+              <Button
+                onClick={editingExecutor ? handleUpdateExecutor : handleAddExecutor}
+                size="sm"
+                className="w-full"
+                disabled={loading}
+              >
                 <Plus className="h-4 w-4 mr-1" />
                 {editingExecutor ? "Обновить исполнителя" : "Добавить исполнителя"}
               </Button>
@@ -133,10 +195,14 @@ export function Settings({ open, onClose }: SettingsProps) {
                   variant="outline"
                   size="sm"
                   className="w-full"
+                  disabled={loading}
                 >
                   Отменить редактирование
                 </Button>
               )}
+
+              {error && <p className="text-sm text-red-500">{error}</p>}
+              {listLoading && <p className="text-sm text-muted-foreground">Загрузка исполнителей…</p>}
 
               <div className="space-y-2">
                 {settings.executors.length === 0 ? (
@@ -154,6 +220,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => handleEditExecutor(executor)}
+                          disabled={loading}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -162,6 +229,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                           size="icon"
                           className="h-8 w-8 text-destructive"
                           onClick={() => handleDeleteExecutor(executor.id)}
+                          disabled={loading}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -173,7 +241,7 @@ export function Settings({ open, onClose }: SettingsProps) {
             </div>
           </Card>
 
-          {/* Теги */}
+          {/* Теги (пока локально) */}
           <Card className="p-4">
             <h3 className="text-lg font-semibold mb-4">Теги</h3>
 
@@ -184,9 +252,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                   onChange={(e) => setNewTag(e.target.value)}
                   placeholder="Новый тег"
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleAddTag()
-                    }
+                    if (e.key === "Enter") handleAddTag()
                   }}
                 />
                 <Button onClick={handleAddTag} size="sm">
@@ -220,3 +286,4 @@ export function Settings({ open, onClose }: SettingsProps) {
     </Dialog>
   )
 }
+
