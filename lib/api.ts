@@ -53,6 +53,15 @@ export type TelegramRequestResponse = {
   telegram_deeplink: string | null
 }
 
+export type ApiUser = {
+  id: number
+  login: string
+  name: string
+  role_text?: string
+  telegram_id?: string | null
+  is_superadmin?: boolean
+}
+
 /* ===================== AUTH ===================== */
 
 export async function loginPassword(login: string, password: string) {
@@ -108,30 +117,22 @@ export async function requestTelegramLink(login: string) {
 /* ===================== USERS ===================== */
 
 export async function getUsers() {
-  return request<
-    Array<{
-      id: number
-      login: string
-      name: string
-      role_text?: string
-      telegram_id?: string | null
-      is_superadmin?: boolean
-    }>
-  >("/users")
+  return request<ApiUser[]>("/users")
+}
+
+export async function createUser(name: string, roleText = "") {
+  // создаёт пользователя-«исполнителя» (login генерится на бэке)
+  return request<{ id: number }>("/users", {
+    method: "POST",
+    body: JSON.stringify({ name, role_text: roleText }),
+  })
 }
 
 export async function updateUser(
   id: number | string,
   payload: { name?: string; role_text?: string },
 ) {
-  return request<{
-    id: number
-    login: string
-    name: string
-    role_text?: string
-    telegram_id?: string | null
-    is_superadmin?: boolean
-  }>(`/users/${id}`, {
+  return request<ApiUser>(`/users/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   })
