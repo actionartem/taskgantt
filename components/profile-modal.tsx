@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { updateUser, requestTelegramLink } from "@/lib/api"
+import { getMe, type Me } from "@/lib/api"
 
 interface ProfileModalProps {
   open: boolean
@@ -22,7 +23,7 @@ interface ProfileModalProps {
     login: string
     name: string
     role_text?: string
-    telegram_id?: string | number | null // ← добавили
+    telegram_id?: string | null // <-- добавили
   }
   onUpdated?: (u: { name: string; role_text?: string }) => void
   onLogout?: () => void
@@ -41,31 +42,28 @@ export function ProfileModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Telegram UI-состояния
+  // Telegram
   const [tgLoading, setTgLoading] = useState(false)
   const [tgCode, setTgCode] = useState<string | null>(null)
   const [tgLink, setTgLink] = useState<string | null>(null)
+  const [isTgLinked, setIsTgLinked] = useState<boolean>(Boolean(user.telegram_id))
 
-  const isTelegramLinked = !!user?.telegram_id // ← ключевой флаг
-
+  // синхронизация при смене пользователя
   useEffect(() => {
     setName(user.name)
     setRoleText(user.role_text || "")
     setShowPassword(false)
-    // при смене пользователя очищаем временные данные запроса кода
     setTgCode(null)
     setTgLink(null)
-  }, [user])
+    setIsTgLinked(Boolean(user.telegram_id))
+  }, [user.id, user.name, user.role_text, user.telegram_id])
 
   async function handleSave() {
     setError(null)
     setLoading(true)
     try {
       if (user.id) {
-        await updateUser(user.id, {
-          name,
-          role_text: roleText,
-        })
+        await updateUser(user.id, { name, role_text: roleText })
       }
       onUpdated?.({ name, role_text: roleText })
       onOpenChange(false)
@@ -77,13 +75,11 @@ export function ProfileModal({
   }
 
   async function handleTelegramClick() {
-    if (isTelegramLinked) return // уже привязан — ничего не делаем
-    if (!user.login) return
+    if (!user.login || isTgLinked) return
     setTgLoading(true)
     setError(null)
     try {
       const resp = await requestTelegramLink(user.login)
-      // { ok, user_id, login, code, telegram_deeplink }
       setTgCode(resp.code || null)
       setTgLink(resp.telegram_deeplink || null)
     } catch (e: any) {
@@ -92,6 +88,32 @@ export function ProfileModal({
       setTgLoading(false)
     }
   }
+
+  // Опрашиваем /me после получения кода — как только поле telegram_id появится, блокируем кнопку
+  useEffect(() => {
+    if (!tgCode || !user.id || isTgLinked) return
+    let cancelled = false
+    const until = Date.now() + 10 * 60 * 1000 // 10 минут
+
+    const tick = async () => {
+      if (cancelled) return
+      try {
+        const me: Me = await getMe(user.id!)
+        if (me.telegram_id) {
+          setIsTgLinked(true)
+          setTgCode(null)
+          setTgLink(null)
+          return
+        }
+      } catch { /* ignore */ }
+      if (!cancelled && Date.now() < until) {
+        setTimeout(tick, 3000)
+      }
+    }
+
+    const t = setTimeout(tick, 3000)
+    return () => { cancelled = true; clearTimeout(t as any) }
+  }, [tgCode, user.id, isTgLinked])
 
   function handleOpenTgLink() {
     if (!tgLink) return
@@ -111,7 +133,6 @@ export function ProfileModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Имя */}
           <div className="space-y-2">
             <Label htmlFor="profile-name">Имя</Label>
             <Input
@@ -121,13 +142,11 @@ export function ProfileModal({
             />
           </div>
 
-          {/* Логин */}
           <div className="space-y-2">
             <Label htmlFor="profile-login">Логин</Label>
             <Input id="profile-login" value={user.login} disabled className="bg-muted" />
           </div>
 
-          {/* Пароль — визуальный, с глазиком */}
           <div className="space-y-2">
             <Label htmlFor="profile-password">Пароль</Label>
             <div className="relative">
@@ -146,12 +165,9 @@ export function ProfileModal({
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Смену пароля сделаем позже.
-            </p>
+            <p className="text-xs text-muted-foreground">Смену пароля сделаем позже.</p>
           </div>
 
-          {/* Роль */}
           <div className="space-y-2">
             <Label htmlFor="profile-role">Роль</Label>
             <Input
@@ -167,34 +183,27 @@ export function ProfileModal({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">Telegram</p>
-                {isTelegramLinked ? (
-                  <p className="text-xs text-muted-foreground">Привязан</p>
-                ) : tgCode ? (
-                  <p className="text-xs text-muted-foreground">
-                    Код: <span className="font-mono">{tgCode}</span> (10 минут)
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Ещё не привязан</p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  {isTgLinked
+                    ? "Привязан"
+                    : tgCode
+                    ? <>Код: <span className="font-mono">{tgCode}</span> (10 минут)</>
+                    : "Ещё не привязан"}
+                </p>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 type="button"
                 onClick={handleTelegramClick}
-                disabled={tgLoading || isTelegramLinked}
-                className={isTelegramLinked ? "opacity-60 cursor-not-allowed" : ""}
+                disabled={tgLoading || isTgLinked}
+                title={isTgLinked ? "Telegram уже привязан" : ""}
               >
-                {isTelegramLinked
-                  ? "Telegram привязан"
-                  : tgLoading
-                  ? "Запрос..."
-                  : "Привязать Telegram"}
+                {isTgLinked ? "Telegram привязан" : tgLoading ? "Запрос..." : "Привязать Telegram"}
               </Button>
             </div>
 
-            {/* Ссылку и код показываем только если НЕ привязан */}
-            {!isTelegramLinked && tgLink ? (
+            {!isTgLinked && tgLink ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -207,10 +216,8 @@ export function ProfileModal({
             ) : null}
           </div>
 
-          {/* Ошибка */}
           {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
-          {/* Подвал */}
           <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
             {onLogout ? (
               <Button variant="destructive" type="button" onClick={onLogout}>
