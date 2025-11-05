@@ -33,6 +33,11 @@ export interface Task {
   hiddenFromGantt?: boolean
 }
 
+export interface Board {
+  id: string
+  name: string
+}
+
 export interface Executor {
   id: string
   name: string
