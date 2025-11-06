@@ -91,14 +91,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }))
     const tagNames = tags.map((t) => t.title)
 
+    // --- НОВОЕ: переносим локальный флаг hiddenFromGantt по id,
+    // если бэк его не отдаёт (или отдаёт как undefined)
+    const localHiddenMap = storage.getTasks().reduce<Record<number, boolean>>((acc, t) => {
+      acc[t.id] = !!t.hiddenFromGantt
+      return acc
+    }, {})
+
+    const mergedTasks: Task[] = apiTasks.map((t: any) => ({
+      ...t,
+      hiddenFromGantt:
+        t.hiddenFromGantt ??
+        (t.hidden_from_gantt != null ? Boolean(t.hidden_from_gantt) : undefined) ??
+        localHiddenMap[t.id] ??
+        false,
+    }))
+
     setSettingsState((prev) => {
       const merged: AppSettings = { ...prev, executors, tags: tagNames }
       storage.saveSettings(merged)
       return merged
     })
 
-    setTasksState(apiTasks)
-    storage.saveTasks(apiTasks)
+    setTasksState(mergedTasks)
+    storage.saveTasks(mergedTasks)
   }, [])
 
   // Быстрая отрисовка из localStorage + последующее обновление с API
@@ -152,11 +168,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateTask = (id: number, updates: Partial<Task>) => {
+    // Оптимистично кладём в локальный стейт/LS
     setTasksState((prev) => {
       const next = prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
       storage.saveTasks(next)
       return next
     })
+
+    // --- НОВОЕ: если меняется ТОЛЬКО hiddenFromGantt — НЕ трогаем API.
+    const presentKeys = Object.keys(updates).filter(
+      (k) => (updates as any)[k] !== undefined,
+    )
+    const onlyHideToggle = presentKeys.length === 1 && presentKeys[0] === "hiddenFromGantt"
+    if (onlyHideToggle) {
+      // Ничего не шлём — локально уже сохранено, гант сам отфильтрует.
+      return
+    }
 
     updateTaskNew(id, {
       title: updates.title,
