@@ -29,9 +29,17 @@ interface AuthModalProps {
   onOpenChange: (open: boolean) => void
   onLogin?: (data: LoginData) => void
   onRegister?: (data: RegisterData) => void
+  /** Если true — модалку нельзя закрыть до авторизации */
+  locked?: boolean
 }
 
-export function AuthModal({ open, onOpenChange, onLogin, onRegister }: AuthModalProps) {
+export function AuthModal({
+  open,
+  onOpenChange,
+  onLogin,
+  onRegister,
+  locked = false,
+}: AuthModalProps) {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login")
   const [loginData, setLoginData] = useState<LoginData>({ login: "", password: "" })
   const [registerData, setRegisterData] = useState<RegisterData>({
@@ -40,21 +48,33 @@ export function AuthModal({ open, onOpenChange, onLogin, onRegister }: AuthModal
     name: "",
   })
 
+  const handleDialogOpenChange = (next: boolean) => {
+    // Пока locked — не даём закрыть окно
+    if (locked && !next) return
+    onOpenChange(next)
+  }
+
   const handleLoginSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     onLogin?.(loginData)
-    onOpenChange(false)
+    // Закрывать будем только после успешного логина, когда locked снимется.
+    if (!locked) onOpenChange(false)
   }
 
   const handleRegisterSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     onRegister?.(registerData)
-    onOpenChange(false)
+    if (!locked) onOpenChange(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+      <DialogContent
+        className="sm:max-w-md"
+        // Блокируем клик снаружи и Esc, пока требуется логин
+        onInteractOutside={locked ? (e) => e.preventDefault() : undefined}
+        onEscapeKeyDown={locked ? (e) => e.preventDefault() : undefined}
+      >
         <DialogHeader>
           <DialogTitle>Добро пожаловать</DialogTitle>
           <DialogDescription>
@@ -63,7 +83,11 @@ export function AuthModal({ open, onOpenChange, onLogin, onRegister }: AuthModal
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "login" | "register")} className="mt-4">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as "login" | "register")}
+          className="mt-4"
+        >
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Вход</TabsTrigger>
             <TabsTrigger value="register">Регистрация</TabsTrigger>
@@ -77,7 +101,9 @@ export function AuthModal({ open, onOpenChange, onLogin, onRegister }: AuthModal
                   id="auth-login-login"
                   autoComplete="username"
                   value={loginData.login}
-                  onChange={(event) => setLoginData((previous) => ({ ...previous, login: event.target.value }))}
+                  onChange={(event) =>
+                    setLoginData((previous) => ({ ...previous, login: event.target.value }))
+                  }
                   required
                 />
               </div>
@@ -89,14 +115,14 @@ export function AuthModal({ open, onOpenChange, onLogin, onRegister }: AuthModal
                   type="password"
                   autoComplete="current-password"
                   value={loginData.password}
-                  onChange={(event) => setLoginData((previous) => ({ ...previous, password: event.target.value }))}
+                  onChange={(event) =>
+                    setLoginData((previous) => ({ ...previous, password: event.target.value }))
+                  }
                   required
                 />
               </div>
 
-              <Button type="submit" className="w-full">
-                Продолжить
-              </Button>
+              <Button type="submit" className="w-full">Продолжить</Button>
             </form>
           </TabsContent>
 
@@ -108,7 +134,9 @@ export function AuthModal({ open, onOpenChange, onLogin, onRegister }: AuthModal
                   id="auth-register-name"
                   autoComplete="name"
                   value={registerData.name}
-                  onChange={(event) => setRegisterData((previous) => ({ ...previous, name: event.target.value }))}
+                  onChange={(event) =>
+                    setRegisterData((previous) => ({ ...previous, name: event.target.value }))
+                  }
                   required
                 />
               </div>
@@ -119,7 +147,9 @@ export function AuthModal({ open, onOpenChange, onLogin, onRegister }: AuthModal
                   id="auth-register-login"
                   autoComplete="username"
                   value={registerData.login}
-                  onChange={(event) => setRegisterData((previous) => ({ ...previous, login: event.target.value }))}
+                  onChange={(event) =>
+                    setRegisterData((previous) => ({ ...previous, login: event.target.value }))
+                  }
                   required
                 />
               </div>
@@ -131,14 +161,14 @@ export function AuthModal({ open, onOpenChange, onLogin, onRegister }: AuthModal
                   type="password"
                   autoComplete="new-password"
                   value={registerData.password}
-                  onChange={(event) => setRegisterData((previous) => ({ ...previous, password: event.target.value }))}
+                  onChange={(event) =>
+                    setRegisterData((previous) => ({ ...previous, password: event.target.value }))
+                  }
                   required
                 />
               </div>
 
-              <Button type="submit" className="w-full">
-                Создать аккаунт
-              </Button>
+              <Button type="submit" className="w-full">Создать аккаунт</Button>
             </form>
           </TabsContent>
         </Tabs>
