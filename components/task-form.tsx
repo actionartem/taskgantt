@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,16 +16,9 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 
-import type { Task, TaskStatus, TaskPriority } from "@/lib/types"
+import type { Task, TaskPriority, TaskStatus } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
 import { generateTaskId, validateTaskId } from "@/lib/task-utils"
-
-// ⬇️ API для тегов
-import {
-  getBoardTags,
-  attachTagToTask,
-  detachTagFromTask,
-} from "@/lib/api"
 
 interface TaskFormProps {
   task?: Task
@@ -42,7 +35,24 @@ const STATUSES: TaskStatus[] = [
   "разработка",
   "завершена",
 ]
+
 const PRIORITIES: TaskPriority[] = ["низкий", "средний", "высокий"]
+
+type FormState = {
+  id: number | ""
+  title: string
+  link: string
+  description: string
+  status: TaskStatus
+  startDate: string
+  endDate: string
+  // ВАЖНО: работаем с id+name, чтобы API получал id, а UI — имя
+  assigneeId: number | null
+  assigneeName: string | null
+  priority: TaskPriority
+  tags: string[]
+  statusLog: Task["statusLog"]
+}
 
 export function TaskForm({ task, open, onClose }: TaskFormProps) {
   const { addTask, updateTask, settings } = useApp()
@@ -50,7 +60,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
   const executors = useMemo(() => settings?.executors ?? [], [settings?.executors])
   const allTags = useMemo(() => settings?.tags ?? [], [settings?.tags])
 
-  const [formData, setFormData] = useState<Partial<Task>>({
+  const [formData, setFormData] = useState<FormState>({
     id: generateTaskId(),
     title: "",
     link: "",
@@ -58,19 +68,33 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
     status: "не в работе",
     startDate: "",
     endDate: "",
-    assignee: "",
+    assigneeId: null,
+    assigneeName: null,
     priority: "средний",
     tags: [],
     statusLog: [],
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Подстановка при открытии
   useEffect(() => {
     if (task) {
       setFormData({
-        ...task,
+        id: task.id,
+        title: task.title ?? "",
+        link: (task as any).link ?? "",
+        description: task.description ?? "",
+        status: task.status,
+        startDate: task.startDate ?? "",
+        endDate: task.endDate ?? "",
+        assigneeId:
+          typeof task.assigneeId === "number"
+            ? task.assigneeId
+            : null,
+        assigneeName: task.assigneeName ?? null,
+        priority: task.priority ?? "средний",
         tags: Array.isArray(task.tags) ? task.tags : [],
-        assignee: typeof task.assignee === "string" ? task.assignee : "",
+        statusLog: Array.isArray(task.statusLog) ? task.statusLog : [],
       })
     } else {
       setFormData({
@@ -81,7 +105,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
         status: "не в работе",
         startDate: "",
         endDate: "",
-        assignee: "",
+        assigneeId: null,
+        assigneeName: null,
         priority: "средний",
         tags: [],
         statusLog: [],
@@ -90,90 +115,73 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
     setErrors({})
   }, [task, open])
 
-  const handleTagToggle = (tag: string) => {
-    const current = Array.isArray(formData.tags) ? formData.tags : []
-    if (current.includes(tag)) {
-      setFormData((p) => ({ ...p, tags: current.filter((t) => t !== tag) }))
-    } else {
-      setFormData((p) => ({ ...p, tags: [...current, tag] }))
-    }
-  }
-
-  // ⬇️ утилита: синхронизация тегов задачи с БД
-  async function syncTaskTags(taskId: number, desiredTitles: string[], prevTitles: string[]) {
-    try {
-      const apiTags = await getBoardTags(1) // глобальные теги
-      const mapTitleToId = new Map(apiTags.map((t) => [t.title, t.id]))
-
-      const desired = new Set((desiredTitles || []).filter(Boolean))
-      const prev = new Set((prevTitles || []).filter(Boolean))
-
-      const toAdd = [...desired].filter((t) => !prev.has(t))
-      const toRemove = [...prev].filter((t) => !desired.has(t))
-
-      await Promise.all(
-        toAdd.map((title) => {
-          const id = mapTitleToId.get(title)
-          return id ? attachTagToTask(taskId, id) : Promise.resolve()
-        }),
-      )
-      await Promise.all(
-        toRemove.map((title) => {
-          const id = mapTitleToId.get(title)
-          return id ? detachTagFromTask(taskId, id) : Promise.resolve()
-        }),
-      )
-    } catch (e) {
-      console.error("syncTaskTags failed:", e)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const newErrors: Record<string, string> = {}
+    const nextErrors: Record<string, string> = {}
 
-    if (!formData.title?.trim()) newErrors.title = "Название обязательно"
-    if (!formData.id || !validateTaskId(formData.id)) {
-      newErrors.id = "ID должен быть 5-значным числом"
+    if (!formData.title.trim()) nextErrors.title = "Название обязательно"
+    if (formData.id === "" || !validateTaskId(Number(formData.id))) {
+      nextErrors.id = "ID должен быть 5-значным числом"
     }
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
+
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors)
       return
     }
 
-    const normalized: Task = {
+    // Нормализуем объект для контекста
+    const normalized: Partial<Task> = {
       id: Number(formData.id),
-      title: (formData.title || "").trim(),
-      link: (formData.link || "").trim(),
-      description: (formData.description || "").trim(),
-      status: (formData.status as TaskStatus) || "не в работе",
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      status: formData.status,
       startDate: formData.startDate || "",
       endDate: formData.endDate || "",
-      assignee: formData.assignee || "",
-      priority: (formData.priority as TaskPriority) || "средний",
+      // ключевой момент: кладём и id, и name
+      assigneeId: formData.assigneeId, // null — ОК, 0 — НЕЛЬЗЯ
+      assigneeName: formData.assigneeName ?? null,
+      priority: formData.priority,
       tags: Array.isArray(formData.tags) ? formData.tags : [],
-      statusLog: Array.isArray(formData.statusLog) ? formData.statusLog : [],
+      // link у нас кастомное поле в UI
+      ...(formData.link ? { link: formData.link } : { link: "" }),
+      statusLog: formData.statusLog,
     }
 
-    try {
-      if (task) {
-        // обновляем поля задачи
-        updateTask(task.id, normalized)
-        // синхронизируем теги по разнице
-        await syncTaskTags(task.id, normalized.tags, Array.isArray(task.tags) ? task.tags : [])
-      } else {
-        // создаём
-        addTask(normalized)
-        // для новой задачи просто прикрепляем выбранные теги
-        await syncTaskTags(Number(normalized.id), normalized.tags, [])
-      }
-    } finally {
-      onClose()
+    if (task) {
+      // патчим только изменившиеся поля не обязательно — апи-проекция
+      updateTask(task.id, normalized)
+    } else {
+      // addTask принимает Task — но наш AppContext поддерживает optimistic и конвертирует
+      addTask(normalized as Task)
     }
+
+    onClose()
   }
 
-  const assigneeValue =
-    formData.assignee && formData.assignee.length > 0 ? formData.assignee : "none"
+  const handleTagToggle = (tag: string) => {
+    setFormData((p) => {
+      const set = new Set(p.tags)
+      set.has(tag) ? set.delete(tag) : set.add(tag)
+      return { ...p, tags: Array.from(set) }
+    })
+  }
+
+  // Значение селекта исполнителя (строка id или "none")
+  const assigneeSelectValue =
+    formData.assigneeId != null ? String(formData.assigneeId) : "none"
+
+  const onAssigneeChange = (value: string) => {
+    if (value === "none") {
+      setFormData((p) => ({ ...p, assigneeId: null, assigneeName: null }))
+      return
+    }
+    const found = executors.find((e) => String(e.id) === value)
+    setFormData((p) => ({
+      ...p,
+      assigneeId: found ? Number(found.id) : null,
+      assigneeName: found?.name ?? null,
+    }))
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -190,7 +198,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               </Label>
               <Input
                 id="title"
-                value={formData.title ?? ""}
+                value={formData.title}
                 onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
                 placeholder="Название задачи"
               />
@@ -204,15 +212,13 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               <Input
                 id="id"
                 type="number"
-                value={formData.id ?? ""}
-                onChange={(e) =>
-                  setFormData((p) => ({
-                    ...p,
-                    id: Number.isFinite(Number(e.target.value))
-                      ? Number(e.target.value)
-                      : p.id,
-                  }))
-                }
+                value={formData.id}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "") return setFormData((p) => ({ ...p, id: "" }))
+                  const n = Number(raw)
+                  if (Number.isFinite(n)) setFormData((p) => ({ ...p, id: n }))
+                }}
                 placeholder="12345"
                 disabled={!!task}
               />
@@ -225,7 +231,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             <Input
               id="link"
               type="url"
-              value={formData.link ?? ""}
+              value={formData.link}
               onChange={(e) => setFormData((p) => ({ ...p, link: e.target.value }))}
               placeholder="https://..."
             />
@@ -235,7 +241,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             <Label htmlFor="description">Описание</Label>
             <Textarea
               id="description"
-              value={formData.description ?? ""}
+              value={formData.description}
               onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
               placeholder="Описание задачи"
               rows={3}
@@ -246,10 +252,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             <div className="space-y-2">
               <Label htmlFor="status">Статус</Label>
               <Select
-                value={(formData.status as TaskStatus) ?? "не в работе"}
-                onValueChange={(value) =>
-                  setFormData((p) => ({ ...p, status: value as TaskStatus }))
-                }
+                value={formData.status}
+                onValueChange={(value) => setFormData((p) => ({ ...p, status: value as TaskStatus }))}
               >
                 <SelectTrigger id="status">
                   <SelectValue />
@@ -267,10 +271,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             <div className="space-y-2">
               <Label htmlFor="priority">Приоритет</Label>
               <Select
-                value={(formData.priority as TaskPriority) ?? "средний"}
-                onValueChange={(value) =>
-                  setFormData((p) => ({ ...p, priority: value as TaskPriority }))
-                }
+                value={formData.priority}
+                onValueChange={(value) => setFormData((p) => ({ ...p, priority: value as TaskPriority }))}
               >
                 <SelectTrigger id="priority">
                   <SelectValue />
@@ -292,7 +294,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               <Input
                 id="startDate"
                 type="date"
-                value={formData.startDate ?? ""}
+                value={formData.startDate}
                 onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
               />
             </div>
@@ -302,7 +304,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               <Input
                 id="endDate"
                 type="date"
-                value={formData.endDate ?? ""}
+                value={formData.endDate}
                 onChange={(e) => setFormData((p) => ({ ...p, endDate: e.target.value }))}
               />
             </div>
@@ -310,19 +312,14 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="assignee">Исполнитель</Label>
-            <Select
-              value={assigneeValue}
-              onValueChange={(value) =>
-                setFormData((p) => ({ ...p, assignee: value === "none" ? "" : value }))
-              }
-            >
+            <Select value={assigneeSelectValue} onValueChange={onAssigneeChange}>
               <SelectTrigger id="assignee">
                 <SelectValue placeholder="Выберите исполнителя" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Не назначен</SelectItem>
                 {executors.map((exec) => (
-                  <SelectItem key={exec.id} value={exec.name}>
+                  <SelectItem key={exec.id} value={String(exec.id)}>
                     {exec.name}
                   </SelectItem>
                 ))}
@@ -339,12 +336,11 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
                 </p>
               ) : (
                 allTags.map((tag) => {
-                  const isActive =
-                    Array.isArray(formData.tags) && formData.tags.includes(tag)
+                  const active = formData.tags.includes(tag)
                   return (
                     <Badge
                       key={tag}
-                      variant={isActive ? "default" : "outline"}
+                      variant={active ? "default" : "outline"}
                       className="cursor-pointer"
                       onClick={() => handleTagToggle(tag)}
                     >
