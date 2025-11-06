@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Pencil, Trash2, EyeOff, ExternalLink } from "lucide-react"
+import { useState, useMemo } from "react"
+import { Pencil, Trash2, EyeOff, ExternalLink, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -26,7 +26,7 @@ const STATUSES: TaskStatus[] = [
 ]
 
 export function TaskItem({ task, onEdit }: TaskItemProps) {
-  const { updateTask, deleteTask } = useApp()
+  const { updateTask, deleteTask, settings } = useApp()
   const [showStatusSelect, setShowStatusSelect] = useState(false)
 
   const handleStatusChange = (newStatus: TaskStatus) => {
@@ -38,6 +38,21 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   const handleHideFromGantt = () => {
     updateTask(task.id, { hiddenFromGantt: !task.hiddenFromGantt })
   }
+
+  // Красиво вычисляем отображаемое имя исполнителя
+  const assigneeDisplay = useMemo(() => {
+    if (task.assigneeName && task.assigneeName.trim()) return task.assigneeName
+
+    if (task.assigneeId != null) {
+      const match = settings.executors.find((e) => String(e.id) === String(task.assigneeId))
+      if (match?.name) return match.name
+    }
+
+    if (typeof (task as any).assignee === "string" && (task as any).assignee.trim()) {
+      return (task as any).assignee as string
+    }
+    return ""
+  }, [task.assigneeName, task.assigneeId, (task as any).assignee, settings.executors])
 
   return (
     <div className="flex items-center gap-3 p-3 border-b hover:bg-muted/50 transition-colors">
@@ -83,7 +98,12 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
           </Badge>
         )}
 
-        {task.assignee && <span className="text-xs text-muted-foreground">{task.assignee}</span>}
+        {assigneeDisplay ? (
+          <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+            <User className="h-3.5 w-3.5" />
+            {assigneeDisplay}
+          </span>
+        ) : null}
 
         <div
           className="w-2 h-2 rounded-full flex-shrink-0"
@@ -99,7 +119,12 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
           <EyeOff className={`h-3.5 w-3.5 ${task.hiddenFromGantt ? "text-muted-foreground" : ""}`} />
         </Button>
 
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteTask(task.id)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-destructive"
+          onClick={() => deleteTask(task.id)}
+        >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
