@@ -1,75 +1,127 @@
 "use client"
 
-import { useState } from "react"
-import { Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { TaskFilters } from "./task-filters"
-import { TaskItem } from "./task-item"
-import type { Task, TaskPriority, TaskStatus } from "@/lib/types"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { TaskPriority, TaskStatus } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
-import { filterTasks, groupTasks } from "@/lib/task-utils"
 
-interface TaskListProps {
-  onCreateTask: () => void
-  onEditTask: (task: Task) => void
+interface TaskFiltersProps {
+  search: string
+  status: TaskStatus | "Все"
+  assigneeId: string // "Все" или строковый id
+  tag: string
+  priority: TaskPriority | "Все"
+  onSearchChange: (value: string) => void
+  onStatusChange: (value: TaskStatus | "Все") => void
+  onAssigneeChange: (value: string) => void // сюда прилетает "Все" или id
+  onTagChange: (value: string) => void
+  onPriorityChange: (value: TaskPriority | "Все") => void
 }
 
-export function TaskList({ onCreateTask, onEditTask }: TaskListProps) {
-  const { tasks, groupBy } = useApp()
-  const [search, setSearch] = useState("")
-  const [status, setStatus] = useState<TaskStatus | "Все">("Все")
-  const [assignee, setAssignee] = useState("Все")
-  const [tag, setTag] = useState("Все")
-  const [priority, setPriority] = useState<TaskPriority | "Все">("Все")
+const STATUSES: Array<TaskStatus | "Все"> = [
+  "Все",
+  "не в работе",
+  "в аналитике",
+  "на согласовании",
+  "оценка",
+  "готова к разработке",
+  "разработка",
+  "завершена",
+]
 
-  const filteredTasks = filterTasks(tasks, {
-    search,
-    status,
-    assignee: assignee === "Все" ? undefined : assignee,
-    tag: tag === "Все" ? undefined : tag,
-    priority,
-  })
+const PRIORITIES: TaskPriority[] = ["низкий", "средний", "высокий"]
 
-  const groupedTasks = groupTasks(filteredTasks, groupBy)
+export function TaskFilters({
+  search,
+  status,
+  assigneeId,
+  tag,
+  priority,
+  onSearchChange,
+  onStatusChange,
+  onAssigneeChange,
+  onTagChange,
+  onPriorityChange,
+}: TaskFiltersProps) {
+  const { settings } = useApp()
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden">
-      <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">Список задач</h2>
-        <Button onClick={onCreateTask} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Создать задачу
-        </Button>
-      </div>
-
-      <TaskFilters
-        search={search}
-        status={status}
-        assignee={assignee}
-        tag={tag}
-        priority={priority}
-        onSearchChange={setSearch}
-        onStatusChange={setStatus}
-        onAssigneeChange={setAssignee}
-        onTagChange={setTag}
-        onPriorityChange={setPriority}
+    <div className="space-y-3 p-4 border-b bg-card">
+      <Input
+        placeholder="Поиск по названию или ID..."
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        className="w-full"
       />
 
-      <div className="flex-1 overflow-y-auto">
-        {Object.entries(groupedTasks).map(([groupName, groupTasks]) => (
-          <div key={groupName}>
-            {groupBy !== "none" && (
-              <div className="sticky top-0 bg-muted px-4 py-2 text-sm font-medium border-b">{groupName}</div>
-            )}
-            {groupTasks.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">Задачи не найдены</div>
-            ) : (
-              groupTasks.map((task) => <TaskItem key={task.id} task={task} onEdit={onEditTask} />)
-            )}
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex items-center gap-2">
+          <Select value={status} onValueChange={onStatusChange}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Статус" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Статус</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={assigneeId} onValueChange={onAssigneeChange}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Исполнитель" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Все">Все</SelectItem>
+              {settings.executors.map((exec) => (
+                <SelectItem key={exec.id} value={String(exec.id)}>
+                  {exec.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Исполнитель</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={tag} onValueChange={onTagChange}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Тег" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Все">Все</SelectItem>
+              {settings.tags.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Тег</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={priority} onValueChange={onPriorityChange}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Приоритет" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Все">Все</SelectItem>
+              {PRIORITIES.map((item) => (
+                <SelectItem key={item} value={item}>
+                  {item.charAt(0).toUpperCase() + item.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Приоритет</span>
+        </div>
       </div>
-    </Card>
+    </div>
   )
 }
