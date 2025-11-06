@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Pencil, Trash2, EyeOff, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -33,12 +32,12 @@ const STATUSES: TaskStatus[] = [
 
 export function TaskItem({ task, onEdit }: TaskItemProps) {
   const { updateTask, deleteTask } = useApp()
-  const [statusOpen, setStatusOpen] = useState(false)
+  const [open, setOpen] = useState(false)
 
-  const handleStatusChange = (newStatus: TaskStatus) => {
-    const statusLog = addStatusChange(task, newStatus)
-    updateTask(task.id, { status: newStatus, statusLog })
-    setStatusOpen(false)
+  const handleStatusChange = (next: TaskStatus) => {
+    const statusLog = addStatusChange(task, next)
+    updateTask(task.id, { status: next, statusLog })
+    setOpen(false)
   }
 
   const handleHideFromGantt = () => {
@@ -47,10 +46,12 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
 
   return (
     <div className="flex items-center gap-3 p-3 border-b hover:bg-muted/50 transition-colors">
+      {/* ID */}
       <div className="flex-shrink-0 w-16 text-sm font-mono text-muted-foreground">
         {task.id}
       </div>
 
+      {/* Title / Link */}
       <div className="flex-1 min-w-0">
         {task.link ? (
           <a
@@ -67,23 +68,25 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
         )}
       </div>
 
+      {/* Right controls */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {/* СТАТУС — всегда рендерим Select; открытие/закрытие управляем */}
+        {/* Компактный Select статуса */}
         <Select
-          open={statusOpen}
-          onOpenChange={setStatusOpen}
+          open={open}
+          onOpenChange={setOpen}
           value={task.status}
           onValueChange={(v) => handleStatusChange(v as TaskStatus)}
         >
           <SelectTrigger
-            className="w-40 h-7 border-0 px-2 py-0 text-xs font-medium rounded-md"
+            // компактные размеры, ширина по контенту
+            className="h-6 px-2 text-xs rounded-md border-0 shadow-none min-w-0 w-auto whitespace-nowrap"
             style={{ backgroundColor: STATUS_COLORS[task.status], color: "white" }}
           >
             <SelectValue />
           </SelectTrigger>
 
-          {/* popper — чтобы список корректно кликался внутри скролла */}
-          <SelectContent position="popper" side="bottom" align="start" className="min-w-[10rem]">
+          {/* popper: выпадающий список поверх скролла, клики ловит стабильно */}
+          <SelectContent position="popper" side="bottom" align="start" className="min-w-[12rem]">
             {STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
                 {s}
@@ -92,25 +95,29 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
           </SelectContent>
         </Select>
 
-        {/* Имя исполнителя (берётся из task.assigneeName в маппинге API→UI) */}
+        {/* Имя исполнителя */}
         {task.assigneeName && (
           <span className="text-xs text-muted-foreground">👤 {task.assigneeName}</span>
         )}
 
+        {/* Индикатор приоритета */}
         <div
           className="w-2 h-2 rounded-full flex-shrink-0"
           style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}
           title={`Приоритет: ${task.priority}`}
         />
 
+        {/* Edit */}
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(task)}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
 
+        {/* Hide from Gantt */}
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleHideFromGantt}>
           <EyeOff className={`h-3.5 w-3.5 ${task.hiddenFromGantt ? "text-muted-foreground" : ""}`} />
         </Button>
 
+        {/* Delete */}
         <Button
           variant="ghost"
           size="icon"
