@@ -49,7 +49,7 @@ export const STATUS_COLORS: Record<TaskStatus, string> = {
   "в аналитике": "#3B82F6",
   "на согласовании": "#8B5CF6",
   оценка: "#F97316",
-  "ревью": "#8B5CF6"
+  "ревью": "#7C3AED",
   "готова к разработке": "#14B8A6",
   разработка: "#22C55E",
   завершена: "#059669",
@@ -114,6 +114,7 @@ export const STATUS_RU_TO_API: Record<TaskStatus, ApiStatus> = {
   "в аналитике": "in_progress",
   "на согласовании": "in_progress",
   оценка: "in_progress",
+  "ревью": "in_progress",
   "готова к разработке": "in_progress",
   разработка: "in_progress",
   завершена: "done",
@@ -121,6 +122,7 @@ export const STATUS_RU_TO_API: Record<TaskStatus, ApiStatus> = {
 
 // Обратный маппинг: всё активное считаем in_progress
 export const STATUS_API_TO_RU = (s: ApiStatus | null): TaskStatus => {
+  if (s === "review") return "ревью";
   if (s === "new") return "не в работе";
   if (s === "done") return "завершена";
   // любое иное серверное значение трактуем как «в работе»

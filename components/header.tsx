@@ -29,6 +29,7 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
     { status: "оценка", label: "Оценка" },
     { status: "готова к разработке", label: "Готова к разработке" },
     { status: "разработка", label: "Разработка" },
+    { status: "ревью", label: "Ревью" },
     { status: "завершена", label: "Завершена" },
   ]
 
@@ -39,6 +40,7 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
     оценка: 0,
     "готова к разработке": 0,
     разработка: 0,
+    "ревью": 0,
     завершена: 0,
   }
 

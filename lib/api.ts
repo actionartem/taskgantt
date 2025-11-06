@@ -57,11 +57,13 @@ const CANONICAL_RU_TO_API: Record<string, string> = {
   "не в работе": "new",
   "разработка": "in_progress",
   "завершена": "done",
+  "ревью": "review",
 }
 const CANONICAL_API_TO_RU: Record<string, string> = {
   new: "не в работе",
   in_progress: "разработка",
   done: "завершена",
+  review: "ревью",
 }
 
 /** RU -> API: маппим только 3 канонических; любые другие — оставляем как есть */
