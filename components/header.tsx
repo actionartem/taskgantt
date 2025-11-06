@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/contexts/app-context"
-import type { GroupBy } from "@/lib/types"
+import type { GroupBy, TaskStatus } from "@/lib/types"
 
 interface HeaderProps {
   onOpenSettings: () => void
@@ -22,16 +22,29 @@ interface HeaderProps {
 export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
   const { tasks, theme, toggleTheme, groupBy, setGroupBy } = useApp()
 
-  const totalTasks = tasks.length
-  const inProgressTasks = tasks.filter(
-    (task) =>
-      task.status === "в аналитике" ||
-      task.status === "на согласовании" ||
-      task.status === "оценка" ||
-      task.status === "готова к разработке" ||
-      task.status === "разработка",
-  ).length
-  const completedTasks = tasks.filter((task) => task.status === "завершена").length
+  const statusOrder: { status: TaskStatus; label: string }[] = [
+    { status: "не в работе", label: "Не в работе" },
+    { status: "в аналитике", label: "Аналитика" },
+    { status: "на согласовании", label: "На согласовании" },
+    { status: "оценка", label: "Оценка" },
+    { status: "готова к разработке", label: "Готова к разработке" },
+    { status: "разработка", label: "Разработка" },
+    { status: "завершена", label: "Завершена" },
+  ]
+
+  const statusCounts: Record<TaskStatus, number> = {
+    "не в работе": 0,
+    "в аналитике": 0,
+    "на согласовании": 0,
+    оценка: 0,
+    "готова к разработке": 0,
+    разработка: 0,
+    завершена: 0,
+  }
+
+  tasks.forEach((task) => {
+    statusCounts[task.status] += 1
+  })
 
   return (
     <header className="border-b bg-card">
@@ -74,16 +87,12 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <Badge variant="secondary" className="px-4 py-2">
-            Всего задач: <span className="ml-2 font-bold">{totalTasks}</span>
-          </Badge>
-          <Badge variant="secondary" className="px-4 py-2">
-            В работе: <span className="ml-2 font-bold">{inProgressTasks}</span>
-          </Badge>
-          <Badge variant="secondary" className="px-4 py-2">
-            Завершено: <span className="ml-2 font-bold">{completedTasks}</span>
-          </Badge>
+        <div className="flex flex-wrap gap-3">
+          {statusOrder.map(({ status, label }) => (
+            <Badge key={status} variant="secondary" className="px-4 py-2">
+              {label}: <span className="ml-2 font-bold">{statusCounts[status]}</span>
+            </Badge>
+          ))}
         </div>
       </div>
     </header>
