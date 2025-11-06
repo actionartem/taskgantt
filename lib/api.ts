@@ -1,8 +1,22 @@
 // lib/api.ts
 
-// Базовый адрес API
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "https://api.simpletracker.ru"
+import {
+  // типы UI/API и маппинги RU⇄EN
+  Task,
+  ApiTask,
+  CreateTaskInput,
+  PatchTaskInput,
+  STATUS_API_TO_RU,
+  STATUS_RU_TO_API,
+  PRIORITY_API_TO_RU,
+  PRIORITY_RU_TO_API,
+} from "./types"
+
+/* ===================== BASE ===================== */
+
+// Базовый адрес API (обрезаем завершающий / на всякий случай)
+export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ||
+  "https://api.simpletracker.ru").replace(/\/$/, "")
 
 // Универсальная обёртка над fetch
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -34,14 +48,75 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>
 }
 
-/* ===================== TYPES ===================== */
+/* ===================== HELPERS ===================== */
+
+function isoFromYmd(date?: string | null): string | null {
+  if (!date) return null
+  return new Date(`${date}T00:00:00.000Z`).toISOString()
+}
+function ymdFromIso(iso?: string | null): string | null {
+  if (!iso) return null
+  return new Date(iso).toISOString().slice(0, 10)
+}
+
+// API → UI
+function fromApiTask(t: ApiTask): Task {
+  return {
+    id: Number(t.id),
+    title: t.title,
+    description: t.description,
+    status: STATUS_API_TO_RU(t.status),
+    priority: t.priority ? PRIORITY_API_TO_RU[t.priority] : "средний",
+    assigneeId: t.assignee_user_id ? Number(t.assignee_user_id) : null,
+    assigneeName: t.assignee_name ?? null,
+    startDate: ymdFromIso(t.start_at),
+    endDate: ymdFromIso(t.due_at),
+    link: t.link_url ?? null,
+    tags: (t.tags || []).map((x) => x.title),
+    hiddenFromGantt: false,
+  }
+}
+
+// UI (RU) → API (EN)
+function toApiCreate(input: CreateTaskInput) {
+  return {
+    ...(input.id ? { id: input.id } : {}),
+    title: input.title,
+    description: input.description ?? null,
+    status: input.status ? STATUS_RU_TO_API[input.status] : "new",
+    priority: input.priority ? PRIORITY_RU_TO_API[input.priority] : "medium",
+    assignee_user_id:
+      input.assigneeId === undefined ? null : input.assigneeId ?? null,
+    start_at: isoFromYmd(input.startDate ?? null),
+    due_at: isoFromYmd(input.endDate ?? null),
+    link_url: input.link ?? null,
+    created_by: input.assigneeId ?? null,
+  }
+}
+function toApiPatch(patch: PatchTaskInput) {
+  const out: Record<string, unknown> = {}
+  if (patch.title !== undefined) out.title = patch.title
+  if (patch.description !== undefined) out.description = patch.description ?? null
+  if (patch.status !== undefined) out.status = STATUS_RU_TO_API[patch.status!]
+  if (patch.priority !== undefined)
+    out.priority = PRIORITY_RU_TO_API[patch.priority!]
+  if (patch.assigneeId !== undefined)
+    out.assignee_user_id = patch.assigneeId ?? null
+  if (patch.startDate !== undefined) out.start_at = isoFromYmd(patch.startDate ?? null)
+  if (patch.endDate !== undefined) out.due_at = isoFromYmd(patch.endDate ?? null)
+  if (patch.link !== undefined) out.link_url = patch.link ?? null
+  if (patch.updatedBy !== undefined) out.updated_by = patch.updatedBy ?? null
+  return out
+}
+
+/* ===================== TYPES (AUTH/USERS) ===================== */
 
 export type Me = {
   id: number
   login: string
   name: string
   role_text?: string | null
-  telegram_id?: string | null   // <-- важно для UI привязки
+  telegram_id?: string | null
   is_superadmin?: boolean
 }
 
@@ -93,12 +168,7 @@ export async function registerPassword(
     is_superadmin?: boolean
   }>("/auth/register-password", {
     method: "POST",
-    body: JSON.stringify({
-      name,
-      login,
-      password,
-      role_text: roleText,
-    }),
+    body: JSON.stringify({ name, login, password, role_text: roleText }),
   })
 }
 
@@ -106,7 +176,6 @@ export async function getMe(userId: number | string) {
   return request<Me>(`/me?user_id=${userId}`)
 }
 
-// Запрос кода/ссылки для привязки Telegram
 export async function requestTelegramLink(login: string) {
   return request<TelegramRequestResponse>("/auth/telegram/request", {
     method: "POST",
@@ -121,7 +190,6 @@ export async function getUsers() {
 }
 
 export async function createUser(name: string, roleText = "") {
-  // создаёт пользователя-«исполнителя» (login генерится на бэке)
   return request<{ id: number }>("/users", {
     method: "POST",
     body: JSON.stringify({ name, role_text: roleText }),
@@ -138,50 +206,112 @@ export async function updateUser(
   })
 }
 
-/* ===================== BOARDS ===================== */
+/* ===================== TASKS (НОВЫЕ ЧИСТЫЕ ФУНКЦИИ) ===================== */
 
-export async function getBoards(userId?: number | string) {
-  const q = userId ? `?user_id=${userId}` : ""
-  return request<
-    Array<{ id: number; title: string; created_by?: number; created_at?: string }>
-  >(`/boards${q}`)
+export async function fetchTasks(opts?: {
+  search?: string
+  status?: Task["status"]
+  assigneeId?: number | null
+  priority?: Task["priority"]
+  tagId?: number
+}): Promise<Task[]> {
+  const q = new URLSearchParams()
+  if (opts?.search) q.set("search", opts.search)
+  if (opts?.status) q.set("status", STATUS_RU_TO_API[opts.status])
+  if (opts?.assigneeId) q.set("assignee_id", String(opts.assigneeId))
+  if (opts?.priority) q.set("priority", PRIORITY_RU_TO_API[opts.priority])
+  if (opts?.tagId) q.set("tag_id", String(opts.tagId))
+
+  const data = await request<ApiTask[]>(
+    `/tasks${q.toString() ? `?${q.toString()}` : ""}`,
+  )
+  return data.map(fromApiTask)
 }
 
-/* ===================== TASKS ===================== */
+export async function createTaskNew(input: CreateTaskInput) {
+  return request<{ id: number }>(`/tasks`, {
+    method: "POST",
+    body: JSON.stringify(toApiCreate(input)),
+  })
+}
+
+export async function updateTaskNew(id: number, patch: PatchTaskInput) {
+  const data = await request<ApiTask>(`/tasks/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(toApiPatch(patch)),
+  })
+  return fromApiTask(data)
+}
+
+export async function deleteTaskNew(id: number) {
+  await request<void>(`/tasks/${id}`, { method: "DELETE" })
+}
+
+/* ===================== TASKS (ОБРАТНАЯ СОВМЕСТИМОСТЬ) ===================== */
+/* Эти функции оставлены, чтобы ничего не сломалось в существующем коде.
+   Они игнорируют boardId и зовут новые эндпоинты. */
 
 export async function getTasks(
-  boardId: number | string,
+  _boardId?: number | string,
   params?: {
     assignee_id?: number | string
     status?: string
     priority?: string
     tag_id?: number | string
+    search?: string
   },
 ) {
-  const search = new URLSearchParams()
-  if (params?.assignee_id) search.set("assignee_id", String(params.assignee_id))
-  if (params?.status) search.set("status", params.status)
-  if (params?.priority) search.set("priority", params.priority)
-  if (params?.tag_id) search.set("tag_id", String(params.tag_id))
-  const qs = search.toString() ? `?${search.toString()}` : ""
-  return request<any[]>(`/boards/${boardId}/tasks${qs}`)
+  const status =
+    params?.status && STATUS_RU_TO_API[params.status as keyof typeof STATUS_RU_TO_API]
+      ? (params.status as Task["status"])
+      : undefined
+  const priority =
+    params?.priority &&
+    PRIORITY_RU_TO_API[params.priority as keyof typeof PRIORITY_RU_TO_API]
+      ? (params.priority as Task["priority"])
+      : undefined
+
+  return fetchTasks({
+    assigneeId: params?.assignee_id ? Number(params.assignee_id) : undefined,
+    status,
+    priority,
+    tagId: params?.tag_id ? Number(params.tag_id) : undefined,
+    search: params?.search,
+  })
 }
 
 export async function createTask(
-  boardId: number | string,
+  _boardId: number | string,
   payload: {
+    id?: number
     title: string
     description?: string
     assignee_user_id?: number | null
+    start_at?: string | null
     due_at?: string | null
+    link_url?: string | null
     priority?: "low" | "medium" | "high"
+    status?: string
     created_by?: number
   },
 ) {
-  return request<{ id: number }>(`/boards/${boardId}/tasks`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  })
+  const input: CreateTaskInput = {
+    id: payload.id,
+    title: payload.title,
+    description: payload.description ?? null,
+    assigneeId:
+      payload.assignee_user_id === undefined ? null : payload.assignee_user_id,
+    startDate: ymdFromIso(payload.start_at ?? null) ?? undefined,
+    endDate: ymdFromIso(payload.due_at ?? null) ?? undefined,
+    link: payload.link_url ?? null,
+    priority: payload.priority
+      ? PRIORITY_API_TO_RU[payload.priority]
+      : "средний",
+    status: payload.status
+      ? STATUS_API_TO_RU(payload.status as any)
+      : "не в работе",
+  }
+  return createTaskNew(input)
 }
 
 export async function updateTask(
@@ -191,50 +321,66 @@ export async function updateTask(
     description?: string
     status?: string
     assignee_user_id?: number | null
+    start_at?: string | null
     due_at?: string | null
+    link_url?: string | null
     priority?: "low" | "medium" | "high"
     updated_by?: number
   },
 ) {
-  return request<any>(`/tasks/${taskId}`, {
-    method: "PATCH",
+  const patch: PatchTaskInput = {
+    title: payload.title,
+    description: payload.description,
+    status: payload.status
+      ? STATUS_API_TO_RU(payload.status as any)
+      : undefined,
+    priority: payload.priority
+      ? PRIORITY_API_TO_RU[payload.priority]
+      : undefined,
+    assigneeId:
+      payload.assignee_user_id === undefined
+        ? undefined
+        : payload.assignee_user_id,
+    startDate: ymdFromIso(payload.start_at ?? null) ?? undefined,
+    endDate: ymdFromIso(payload.due_at ?? null) ?? undefined,
+    link: payload.link_url ?? undefined,
+    updatedBy:
+      payload.updated_by === undefined ? undefined : payload.updated_by ?? null,
+  }
+  return updateTaskNew(Number(taskId), patch)
+}
+
+// Историю мы убрали на бэке; оставим функцию как «мягкий» заглушечный вызов.
+export async function getTaskHistory(_taskId: number | string) {
+  return [] as Array<{
+    id: number
+    user_id: number | null
+    user_name?: string | null
+    action: string
+    text: string | null
+    created_at: string
+  }>
+}
+
+/* ===================== TAGS ===================== */
+/* Теги теперь глобальные. Обёртки ниже сохраняют прежние названия. */
+
+export async function getBoardTags(_boardId?: number | string) {
+  return request<Array<{ id: number; title: string; color: string }>>(`/tags`)
+}
+
+export async function createBoardTag(
+  _boardId: number | string,
+  payload: { title: string; color?: string },
+) {
+  return request<{ id: number; title: string; color: string }>(`/tags`, {
+    method: "POST",
     body: JSON.stringify(payload),
   })
 }
 
-export async function getTaskHistory(taskId: number | string) {
-  return request<
-    Array<{
-      id: number
-      user_id: number | null
-      user_name?: string | null
-      action: string
-      text: string | null
-      created_at: string
-    }>
-  >(`/tasks/${taskId}/history`)
-}
-
-/* ===================== TAGS ===================== */
-
-export async function getBoardTags(boardId: number | string) {
-  return request<Array<{ id: number; board_id: number; title: string; color: string }>>(
-    `/boards/${boardId}/tags`,
-  )
-}
-
-export async function createBoardTag(
-  boardId: number | string,
-  payload: { title: string; color?: string },
-) {
-  return request<{ id: number; board_id: number; title: string; color: string }>(
-    `/boards/${boardId}/tags`,
-    { method: "POST", body: JSON.stringify(payload) },
-  )
-}
-
-export async function deleteBoardTag(boardId: number | string, tagId: number | string) {
-  return request<{}>(`/boards/${boardId}/tags/${tagId}`, { method: "DELETE" })
+export async function deleteBoardTag(_boardId: number | string, tagId: number | string) {
+  return request<{}>(`/tags/${tagId}`, { method: "DELETE" })
 }
 
 export async function attachTagToTask(taskId: number | string, tagId: number | string) {
@@ -246,4 +392,11 @@ export async function attachTagToTask(taskId: number | string, tagId: number | s
 
 export async function detachTagFromTask(taskId: number | string, tagId: number | string) {
   return request<{}>(`/tasks/${taskId}/tags/${tagId}`, { method: "DELETE" })
+}
+
+/* ===================== BOARDS (ДЕПРЕКЕЙТЕД) ===================== */
+// Для совместимости — возвращаем фиктивную «единую» доску.
+// Если в коде больше не используется — можно удалить.
+export async function getBoards(_userId?: number | string) {
+  return Promise.resolve([{ id: 1, title: "Общие задачи", created_at: "" }])
 }
