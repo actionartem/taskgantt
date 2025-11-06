@@ -1,10 +1,17 @@
+// components/task-item.tsx
 "use client"
 
 import { useState, useMemo } from "react"
 import { Pencil, Trash2, EyeOff, ExternalLink, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { Task, TaskStatus } from "@/lib/types"
 import { STATUS_COLORS, PRIORITY_COLORS } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
@@ -27,11 +34,16 @@ const STATUSES: TaskStatus[] = [
 
 export function TaskItem({ task, onEdit }: TaskItemProps) {
   const { updateTask, deleteTask, settings } = useApp()
+
+  // переключатель «бэдж → селект»
   const [showStatusSelect, setShowStatusSelect] = useState(false)
+  // контролируем открытие выпадашки, чтобы корректно закрывать при выборе/клике вне
+  const [selectOpen, setSelectOpen] = useState(false)
 
   const handleStatusChange = (newStatus: TaskStatus) => {
     const statusLog = addStatusChange(task, newStatus)
     updateTask(task.id, { status: newStatus, statusLog })
+    setSelectOpen(false)
     setShowStatusSelect(false)
   }
 
@@ -39,15 +51,13 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
     updateTask(task.id, { hiddenFromGantt: !task.hiddenFromGantt })
   }
 
-  // Красиво вычисляем отображаемое имя исполнителя
+  // Аккуратно вычисляем отображаемое имя исполнителя
   const assigneeDisplay = useMemo(() => {
     if (task.assigneeName && task.assigneeName.trim()) return task.assigneeName
-
     if (task.assigneeId != null) {
       const match = settings.executors.find((e) => String(e.id) === String(task.assigneeId))
       if (match?.name) return match.name
     }
-
     if (typeof (task as any).assignee === "string" && (task as any).assignee.trim()) {
       return (task as any).assignee as string
     }
@@ -76,13 +86,38 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
 
       <div className="flex items-center gap-2 flex-shrink-0">
         {showStatusSelect ? (
-          <Select value={task.status} onValueChange={handleStatusChange}>
+          <Select
+            open={selectOpen}
+            onOpenChange={(o) => {
+              setSelectOpen(o)
+              if (!o) setShowStatusSelect(false)
+            }}
+            value={task.status}
+            onValueChange={(v) => handleStatusChange(v as TaskStatus)}
+          >
+            {/* сохраняем твои размеры — НИЧЕГО визуально не меняем */}
             <SelectTrigger className="w-40 h-7">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+
+            {/* высокий z-index + popper, чтобы клики не «съедались» контейнерами */}
+            <SelectContent
+              position="popper"
+              side="bottom"
+              align="start"
+              className="z-[60]"
+            >
               {STATUSES.map((status) => (
-                <SelectItem key={status} value={status}>
+                <SelectItem
+                  key={status}
+                  value={status}
+                  // дублируем выбор через onSelect — это фиксит кейсы, когда Radix
+                  // не отрабатывает click из-за оверлеев/скролла/перехвата событий
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    handleStatusChange(status)
+                  }}
+                >
                   {status}
                 </SelectItem>
               ))}
@@ -92,7 +127,10 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
           <Badge
             style={{ backgroundColor: STATUS_COLORS[task.status], color: "white" }}
             className="cursor-pointer hover:opacity-80"
-            onClick={() => setShowStatusSelect(true)}
+            onClick={() => {
+              setShowStatusSelect(true)
+              setSelectOpen(true)
+            }}
           >
             {task.status}
           </Badge>
