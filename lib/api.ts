@@ -59,13 +59,35 @@ function ymdFromIso(iso?: string | null): string | null {
   return new Date(iso).toISOString().slice(0, 10)
 }
 
+/** RU -> API: если статус не в словаре — оставляем как есть (пасc-тру) */
+function ruToApiStatusFlex(s?: string | null): string | null {
+  if (!s) return null
+  const key = s.toLowerCase()
+  const map = STATUS_RU_TO_API as Record<string, string>
+  return map[key] ?? s
+}
+
+/** API -> RU: если пришёл код из словаря — маппим, иначе оставляем как есть */
+function apiToRuStatusFlex(s?: string | null): string {
+  if (!s) return "не в работе"
+  try {
+    // STATUS_API_TO_RU может быть функцией — поддержим оба варианта
+    const fn = STATUS_API_TO_RU as unknown as (x: string) => string | undefined
+    const v = fn?.(s)
+    return v ?? s
+  } catch {
+    const anyMap = STATUS_API_TO_RU as unknown as Record<string, string>
+    return anyMap?.[s] ?? s
+  }
+}
+
 // API → UI
 function fromApiTask(t: ApiTask): Task {
   return {
     id: Number(t.id),
     title: t.title,
     description: t.description,
-    status: STATUS_API_TO_RU(t.status),
+    status: apiToRuStatusFlex(t.status),
     priority: t.priority ? PRIORITY_API_TO_RU[t.priority] : "средний",
     assigneeId: t.assignee_user_id ? Number(t.assignee_user_id) : null,
     assigneeName: t.assignee_name ?? null,
@@ -83,7 +105,7 @@ function toApiCreate(input: CreateTaskInput) {
     ...(input.id ? { id: input.id } : {}),
     title: input.title,
     description: input.description ?? null,
-    status: input.status ? STATUS_RU_TO_API[input.status] : "new",
+    status: input.status ? ruToApiStatusFlex(input.status) : "new",
     priority: input.priority ? PRIORITY_RU_TO_API[input.priority] : "medium",
     assignee_user_id:
       input.assigneeId === undefined ? null : input.assigneeId ?? null,
@@ -97,7 +119,7 @@ function toApiPatch(patch: PatchTaskInput) {
   const out: Record<string, unknown> = {}
   if (patch.title !== undefined) out.title = patch.title
   if (patch.description !== undefined) out.description = patch.description ?? null
-  if (patch.status !== undefined) out.status = STATUS_RU_TO_API[patch.status!]
+  if (patch.status !== undefined) out.status = ruToApiStatusFlex(patch.status!)
   if (patch.priority !== undefined)
     out.priority = PRIORITY_RU_TO_API[patch.priority!]
   if (patch.assigneeId !== undefined)
@@ -217,7 +239,7 @@ export async function fetchTasks(opts?: {
 }): Promise<Task[]> {
   const q = new URLSearchParams()
   if (opts?.search) q.set("search", opts.search)
-  if (opts?.status) q.set("status", STATUS_RU_TO_API[opts.status])
+  if (opts?.status) q.set("status", ruToApiStatusFlex(opts.status))
   if (opts?.assigneeId) q.set("assignee_id", String(opts.assigneeId))
   if (opts?.priority) q.set("priority", PRIORITY_RU_TO_API[opts.priority])
   if (opts?.tagId) q.set("tag_id", String(opts.tagId))
@@ -262,7 +284,7 @@ export async function getTasks(
   },
 ) {
   const status =
-    params?.status && STATUS_RU_TO_API[params.status as keyof typeof STATUS_RU_TO_API]
+    params?.status && (params.status as string)
       ? (params.status as Task["status"])
       : undefined
   const priority =
@@ -307,9 +329,7 @@ export async function createTask(
     priority: payload.priority
       ? PRIORITY_API_TO_RU[payload.priority]
       : "средний",
-    status: payload.status
-      ? STATUS_API_TO_RU(payload.status as any)
-      : "не в работе",
+    status: payload.status ? apiToRuStatusFlex(payload.status as any) : "не в работе",
   }
   return createTaskNew(input)
 }
@@ -331,9 +351,7 @@ export async function updateTask(
   const patch: PatchTaskInput = {
     title: payload.title,
     description: payload.description,
-    status: payload.status
-      ? STATUS_API_TO_RU(payload.status as any)
-      : undefined,
+    status: payload.status ? apiToRuStatusFlex(payload.status as any) : undefined,
     priority: payload.priority
       ? PRIORITY_API_TO_RU[payload.priority]
       : undefined,
