@@ -35,9 +35,9 @@ const STATUSES: TaskStatus[] = [
 export function TaskItem({ task, onEdit }: TaskItemProps) {
   const { updateTask, deleteTask, settings } = useApp()
 
-  // переключатель «бэдж → селект»
+  // переключатель бэдж → селект
   const [showStatusSelect, setShowStatusSelect] = useState(false)
-  // контролируем открытие выпадашки, чтобы корректно закрывать при выборе/клике вне
+  // контролируем открыт/закрыт
   const [selectOpen, setSelectOpen] = useState(false)
 
   const handleStatusChange = (newStatus: TaskStatus) => {
@@ -51,12 +51,11 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
     updateTask(task.id, { hiddenFromGantt: !task.hiddenFromGantt })
   }
 
-  // Аккуратно вычисляем отображаемое имя исполнителя
   const assigneeDisplay = useMemo(() => {
     if (task.assigneeName && task.assigneeName.trim()) return task.assigneeName
     if (task.assigneeId != null) {
-      const match = settings.executors.find((e) => String(e.id) === String(task.assigneeId))
-      if (match?.name) return match.name
+      const m = settings.executors.find((e) => String(e.id) === String(task.assigneeId))
+      if (m?.name) return m.name
     }
     if (typeof (task as any).assignee === "string" && (task as any).assignee.trim()) {
       return (task as any).assignee as string
@@ -87,6 +86,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
       <div className="flex items-center gap-2 flex-shrink-0">
         {showStatusSelect ? (
           <Select
+            // делаем контролируемым
             open={selectOpen}
             onOpenChange={(o) => {
               setSelectOpen(o)
@@ -94,29 +94,31 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
             }}
             value={task.status}
             onValueChange={(v) => handleStatusChange(v as TaskStatus)}
+            // важно: не модальный, чтобы не блокировались клики поппером
+            modal={false}
           >
-            {/* сохраняем твои размеры — НИЧЕГО визуально не меняем */}
+            {/* ВНЕШНИЙ ВИД НЕ МЕНЯЕМ */}
             <SelectTrigger className="w-40 h-7">
               <SelectValue />
             </SelectTrigger>
 
-            {/* высокий z-index + popper, чтобы клики не «съедались» контейнерами */}
+            {/* высокий z-index + popper, чтобы ничего не перекрывало */}
             <SelectContent
               position="popper"
               side="bottom"
               align="start"
-              className="z-[60]"
+              sideOffset={4}
+              className="z-[9999] pointer-events-auto"
+              // закрываем по клику вне
+              onPointerDownOutside={() => {
+                setSelectOpen(false)
+                setShowStatusSelect(false)
+              }}
             >
               {STATUSES.map((status) => (
                 <SelectItem
                   key={status}
                   value={status}
-                  // дублируем выбор через onSelect — это фиксит кейсы, когда Radix
-                  // не отрабатывает click из-за оверлеев/скролла/перехвата событий
-                  onSelect={(e) => {
-                    e.preventDefault()
-                    handleStatusChange(status)
-                  }}
                 >
                   {status}
                 </SelectItem>
