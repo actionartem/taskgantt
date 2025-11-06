@@ -1,10 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import type {
-  MouseEvent as ReactMouseEvent,
-  TouchEvent as ReactTouchEvent,
-} from "react"
+import type { MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from "react"
 
 import { Header } from "@/components/header"
 import { TaskList } from "@/components/task-list"
@@ -82,9 +79,7 @@ export default function HomePage() {
       handlePointerMove(touch.clientX)
     }
 
-    const handlePointerUp = () => {
-      setIsResizing(false)
-    }
+    const handlePointerUp = () => setIsResizing(false)
 
     window.addEventListener("mousemove", handleMouseMove)
     window.addEventListener("touchmove", handleTouchMove, { passive: false })
@@ -181,65 +176,65 @@ export default function HomePage() {
 
   // КНОПКА В ХЕДЕРЕ
   const handleHeaderUserClick = () => {
-    if (!currentUser) {
-      // гость → открываем логин
-      setIsAuthModalOpen(true)
-    } else {
-      // залогинен → открываем профиль
-      setIsProfileModalOpen(true)
-    }
+    if (!currentUser) setIsAuthModalOpen(true)
+    else setIsProfileModalOpen(true)
   }
+
+  const isLocked = !currentUser
 
   return (
     <div className="flex h-screen flex-col">
-      <Header
-        onOpenSettings={() => setShowSettings(true)}
-        onOpenAuth={handleHeaderUserClick}
-        user={currentUser}
-      />
+      {/* Весь интерфейс в «заблокированном» контейнере */}
+      <div className={isLocked ? "pointer-events-none select-none blur-sm" : ""}>
+        <Header
+          onOpenSettings={() => setShowSettings(true)}
+          onOpenAuth={handleHeaderUserClick}
+          user={currentUser}
+        />
 
-      {authError ? (
-        <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
-      ) : null}
+        {authError ? (
+          <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
+        ) : null}
 
-      <main className="flex-1 overflow-hidden">
-        <div ref={containerRef} className="flex h-full items-stretch p-4">
-          <div
-            className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
-            style={{ flexBasis: `${leftWidth}%` }}
-          >
-            <TaskList onCreateTask={handleCreateTask} onEditTask={handleEditTask} />
+        <main className="flex-1 overflow-hidden">
+          <div ref={containerRef} className="flex h-full items-stretch p-4">
+            <div
+              className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
+              style={{ flexBasis: `${leftWidth}%` }}
+            >
+              <TaskList onCreateTask={handleCreateTask} onEditTask={handleEditTask} />
+            </div>
+            <div
+              className="mx-4 flex w-1 cursor-col-resize items-stretch"
+              onMouseDown={startResizing}
+              onTouchStart={startResizing}
+            >
+              <div className="h-full w-full rounded bg-neutral-200 transition-colors hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600" />
+            </div>
+            <div
+              className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
+              style={{ flexBasis: `${100 - leftWidth}%` }}
+            >
+              <GanttChart />
+            </div>
           </div>
-          <div
-            className="mx-4 flex w-1 cursor-col-resize items-stretch"
-            onMouseDown={startResizing}
-            onTouchStart={startResizing}
-          >
-            <div className="h-full w-full rounded bg-neutral-200 transition-colors hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600" />
-          </div>
-          <div
-            className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
-            style={{ flexBasis: `${100 - leftWidth}%` }}
-          >
-            <GanttChart />
-          </div>
-        </div>
-      </main>
+        </main>
 
-      <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />
-      <Settings open={showSettings} onClose={() => setShowSettings(false)} />
+        <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />
+        <Settings open={showSettings} onClose={() => setShowSettings(false)} />
+      </div>
 
-      {/* 1) модалка авторизации — показываем ТОЛЬКО если юзера НЕТ */}
+      {/* Модалки размещаем вне блокирующего контейнера */}
       {!currentUser && (
         <AuthModal
           open={isAuthModalOpen}
           onOpenChange={setIsAuthModalOpen}
           onLogin={handleLogin}
           onRegister={handleRegister}
+          locked={true}
         />
       )}
 
-      {/* 2) модалка профиля — только если юзер есть */}
       {currentUser && (
         <ProfileModal
           open={isProfileModalOpen}
@@ -255,7 +250,6 @@ export default function HomePage() {
                   const parsed = JSON.parse(raw)
                   localStorage.setItem("st_user", JSON.stringify({ ...parsed, ...u }))
                 } catch {
-                  // если сломано — просто перезапишем
                   localStorage.setItem("st_user", JSON.stringify(u))
                 }
               }
