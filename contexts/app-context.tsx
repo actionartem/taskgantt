@@ -48,14 +48,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
 
   // ---- утилита согласования старых/новых полей исполнителя
+  // Главная правка: пустые/невалидные значения и 0 -> null, неизменённое поле -> undefined
   const safeAssigneeId = (t: Partial<Task>): number | null | undefined => {
     const anyT = t as any
-    if (typeof anyT?.assigneeId === "number") return anyT.assigneeId
-    if (anyT?.assigneeId === null) return null
-    if (anyT?.assignee != null) {
-      const n = Number(anyT.assignee)
-      return Number.isFinite(n) ? n : null
+
+    // 1) Явно передали число
+    if (typeof anyT?.assigneeId === "number") {
+      return anyT.assigneeId === 0 ? null : anyT.assigneeId
     }
+
+    // 2) Явно null
+    if (anyT?.assigneeId === null) return null
+
+    // 3) Поддержка старого поля assignee (строка)
+    if (anyT?.assignee != null) {
+      const raw = String(anyT.assignee).trim().toLowerCase()
+      if (raw === "" || raw === "none" || raw === "null" || raw === "undefined") return null
+
+      const n = Number(raw)
+      // Важно: Number("") === 0 — считаем отсутствием значения
+      if (!Number.isFinite(n) || n === 0) return null
+      return n
+    }
+
+    // 4) Поле не меняли — не отправляем
     return undefined
   }
 
