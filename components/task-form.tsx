@@ -20,6 +20,13 @@ import type { Task, TaskStatus, TaskPriority } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
 import { generateTaskId, validateTaskId } from "@/lib/task-utils"
 
+// ⬇️ API для тегов
+import {
+  getBoardTags,
+  attachTagToTask,
+  detachTagFromTask,
+} from "@/lib/api"
+
 interface TaskFormProps {
   task?: Task
   open: boolean
@@ -35,31 +42,15 @@ const STATUSES: TaskStatus[] = [
   "разработка",
   "завершена",
 ]
-
 const PRIORITIES: TaskPriority[] = ["низкий", "средний", "высокий"]
-
-type FormState = {
-  id: number | ""
-  title: string
-  link: string
-  description: string
-  status: TaskStatus
-  startDate: string
-  endDate: string
-  /** Выбранный исполнитель в Select — строковый id или "none" */
-  assigneeId: string
-  priority: TaskPriority
-  tags: string[]
-}
 
 export function TaskForm({ task, open, onClose }: TaskFormProps) {
   const { addTask, updateTask, settings } = useApp()
 
-  // безопасные дефолты, чтобы не падать на undefined
   const executors = useMemo(() => settings?.executors ?? [], [settings?.executors])
   const allTags = useMemo(() => settings?.tags ?? [], [settings?.tags])
 
-  const [form, setForm] = useState<FormState>({
+  const [formData, setFormData] = useState<Partial<Task>>({
     id: generateTaskId(),
     title: "",
     link: "",
@@ -67,32 +58,22 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
     status: "не в работе",
     startDate: "",
     endDate: "",
-    assigneeId: "none",
+    assignee: "",
     priority: "средний",
     tags: [],
+    statusLog: [],
   })
-
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (task) {
-      setForm({
-        id: task.id,
-        title: task.title ?? "",
-        link: task.link ?? "",
-        description: task.description ?? "",
-        status: (task.status as TaskStatus) ?? "не в работе",
-        startDate: task.startDate ?? "",
-        endDate: task.endDate ?? "",
-        assigneeId:
-          task.assigneeId === null || task.assigneeId === undefined
-            ? "none"
-            : String(task.assigneeId),
-        priority: (task.priority as TaskPriority) ?? "средний",
+      setFormData({
+        ...task,
         tags: Array.isArray(task.tags) ? task.tags : [],
+        assignee: typeof task.assignee === "string" ? task.assignee : "",
       })
     } else {
-      setForm({
+      setFormData({
         id: generateTaskId(),
         title: "",
         link: "",
@@ -100,60 +81,99 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
         status: "не в работе",
         startDate: "",
         endDate: "",
-        assigneeId: "none",
+        assignee: "",
         priority: "средний",
         tags: [],
+        statusLog: [],
       })
     }
     setErrors({})
   }, [task, open])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleTagToggle = (tag: string) => {
+    const current = Array.isArray(formData.tags) ? formData.tags : []
+    if (current.includes(tag)) {
+      setFormData((p) => ({ ...p, tags: current.filter((t) => t !== tag) }))
+    } else {
+      setFormData((p) => ({ ...p, tags: [...current, tag] }))
+    }
+  }
+
+  // ⬇️ утилита: синхронизация тегов задачи с БД
+  async function syncTaskTags(taskId: number, desiredTitles: string[], prevTitles: string[]) {
+    try {
+      const apiTags = await getBoardTags(1) // глобальные теги
+      const mapTitleToId = new Map(apiTags.map((t) => [t.title, t.id]))
+
+      const desired = new Set((desiredTitles || []).filter(Boolean))
+      const prev = new Set((prevTitles || []).filter(Boolean))
+
+      const toAdd = [...desired].filter((t) => !prev.has(t))
+      const toRemove = [...prev].filter((t) => !desired.has(t))
+
+      await Promise.all(
+        toAdd.map((title) => {
+          const id = mapTitleToId.get(title)
+          return id ? attachTagToTask(taskId, id) : Promise.resolve()
+        }),
+      )
+      await Promise.all(
+        toRemove.map((title) => {
+          const id = mapTitleToId.get(title)
+          return id ? detachTagFromTask(taskId, id) : Promise.resolve()
+        }),
+      )
+    } catch (e) {
+      console.error("syncTaskTags failed:", e)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const newErrors: Record<string, string> = {}
 
-    if (!form.title.trim()) newErrors.title = "Название обязательно"
-
-    if (form.id === "" || !validateTaskId(form.id)) {
+    if (!formData.title?.trim()) newErrors.title = "Название обязательно"
+    if (!formData.id || !validateTaskId(formData.id)) {
       newErrors.id = "ID должен быть 5-значным числом"
     }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
     }
 
     const normalized: Task = {
-      id: Number(form.id),
-      title: form.title.trim(),
-      link: form.link.trim(),
-      description: form.description.trim(),
-      status: form.status,
-      startDate: form.startDate || "",
-      endDate: form.endDate || "",
-      assigneeId: form.assigneeId !== "none" ? Number(form.assigneeId) : null,
-      priority: form.priority,
-      tags: Array.isArray(form.tags) ? form.tags : [],
+      id: Number(formData.id),
+      title: (formData.title || "").trim(),
+      link: (formData.link || "").trim(),
+      description: (formData.description || "").trim(),
+      status: (formData.status as TaskStatus) || "не в работе",
+      startDate: formData.startDate || "",
+      endDate: formData.endDate || "",
+      assignee: formData.assignee || "",
+      priority: (formData.priority as TaskPriority) || "средний",
+      tags: Array.isArray(formData.tags) ? formData.tags : [],
+      statusLog: Array.isArray(formData.statusLog) ? formData.statusLog : [],
     }
 
-    if (task) {
-      // частичное обновление, но мы передаём актуальный снимок
-      updateTask(task.id, normalized)
-    } else {
-      addTask(normalized)
+    try {
+      if (task) {
+        // обновляем поля задачи
+        updateTask(task.id, normalized)
+        // синхронизируем теги по разнице
+        await syncTaskTags(task.id, normalized.tags, Array.isArray(task.tags) ? task.tags : [])
+      } else {
+        // создаём
+        addTask(normalized)
+        // для новой задачи просто прикрепляем выбранные теги
+        await syncTaskTags(Number(normalized.id), normalized.tags, [])
+      }
+    } finally {
+      onClose()
     }
-
-    onClose()
   }
 
-  const handleTagToggle = (tag: string) => {
-    const current = Array.isArray(form.tags) ? form.tags : []
-    if (current.includes(tag)) {
-      setForm((p) => ({ ...p, tags: current.filter((t) => t !== tag) }))
-    } else {
-      setForm((p) => ({ ...p, tags: [...current, tag] }))
-    }
-  }
+  const assigneeValue =
+    formData.assignee && formData.assignee.length > 0 ? formData.assignee : "none"
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -170,8 +190,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               </Label>
               <Input
                 id="title"
-                value={form.title}
-                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                value={formData.title ?? ""}
+                onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
                 placeholder="Название задачи"
               />
               {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
@@ -184,15 +204,14 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               <Input
                 id="id"
                 type="number"
-                value={form.id}
+                value={formData.id ?? ""}
                 onChange={(e) =>
-                  setForm((p) => {
-                    const n = Number(e.target.value)
-                    return {
-                      ...p,
-                      id: Number.isFinite(n) ? n : p.id,
-                    }
-                  })
+                  setFormData((p) => ({
+                    ...p,
+                    id: Number.isFinite(Number(e.target.value))
+                      ? Number(e.target.value)
+                      : p.id,
+                  }))
                 }
                 placeholder="12345"
                 disabled={!!task}
@@ -206,8 +225,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             <Input
               id="link"
               type="url"
-              value={form.link}
-              onChange={(e) => setForm((p) => ({ ...p, link: e.target.value }))}
+              value={formData.link ?? ""}
+              onChange={(e) => setFormData((p) => ({ ...p, link: e.target.value }))}
               placeholder="https://..."
             />
           </div>
@@ -216,8 +235,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             <Label htmlFor="description">Описание</Label>
             <Textarea
               id="description"
-              value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              value={formData.description ?? ""}
+              onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
               placeholder="Описание задачи"
               rows={3}
             />
@@ -227,9 +246,9 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             <div className="space-y-2">
               <Label htmlFor="status">Статус</Label>
               <Select
-                value={form.status}
+                value={(formData.status as TaskStatus) ?? "не в работе"}
                 onValueChange={(value) =>
-                  setForm((p) => ({ ...p, status: value as TaskStatus }))
+                  setFormData((p) => ({ ...p, status: value as TaskStatus }))
                 }
               >
                 <SelectTrigger id="status">
@@ -248,9 +267,9 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             <div className="space-y-2">
               <Label htmlFor="priority">Приоритет</Label>
               <Select
-                value={form.priority}
+                value={(formData.priority as TaskPriority) ?? "средний"}
                 onValueChange={(value) =>
-                  setForm((p) => ({ ...p, priority: value as TaskPriority }))
+                  setFormData((p) => ({ ...p, priority: value as TaskPriority }))
                 }
               >
                 <SelectTrigger id="priority">
@@ -273,8 +292,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               <Input
                 id="startDate"
                 type="date"
-                value={form.startDate}
-                onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
+                value={formData.startDate ?? ""}
+                onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
               />
             </div>
 
@@ -283,8 +302,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               <Input
                 id="endDate"
                 type="date"
-                value={form.endDate}
-                onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
+                value={formData.endDate ?? ""}
+                onChange={(e) => setFormData((p) => ({ ...p, endDate: e.target.value }))}
               />
             </div>
           </div>
@@ -292,9 +311,9 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
           <div className="space-y-2">
             <Label htmlFor="assignee">Исполнитель</Label>
             <Select
-              value={form.assigneeId}
+              value={assigneeValue}
               onValueChange={(value) =>
-                setForm((p) => ({ ...p, assigneeId: value }))
+                setFormData((p) => ({ ...p, assignee: value === "none" ? "" : value }))
               }
             >
               <SelectTrigger id="assignee">
@@ -303,7 +322,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               <SelectContent>
                 <SelectItem value="none">Не назначен</SelectItem>
                 {executors.map((exec) => (
-                  <SelectItem key={exec.id} value={String(exec.id)}>
+                  <SelectItem key={exec.id} value={exec.name}>
                     {exec.name}
                   </SelectItem>
                 ))}
@@ -320,7 +339,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
                 </p>
               ) : (
                 allTags.map((tag) => {
-                  const isActive = Array.isArray(form.tags) && form.tags.includes(tag)
+                  const isActive =
+                    Array.isArray(formData.tags) && formData.tags.includes(tag)
                   return (
                     <Badge
                       key={tag}
