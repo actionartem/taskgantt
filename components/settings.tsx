@@ -11,8 +11,10 @@ import { Badge } from "@/components/ui/badge"
 import type { Executor } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
 
-// API
+// API: пользователи
 import { API_BASE, getUsers, createUser, updateUser } from "@/lib/api"
+// API: теги
+import { getBoardTags, createBoardTag, deleteBoardTag } from "@/lib/api"
 
 interface SettingsProps {
   open: boolean
@@ -25,14 +27,22 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [executorForm, setExecutorForm] = useState<Partial<Executor>>({ name: "", role: "" })
   const [editingExecutor, setEditingExecutor] = useState<string | null>(null)
 
+  // Теги
   const [newTag, setNewTag] = useState("")
+  const [tagLoading, setTagLoading] = useState(false)
+  const [tagError, setTagError] = useState<string | null>(null)
+
+  // Исполнители
   const [loading, setLoading] = useState(false)
   const [listLoading, setListLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // --- helpers ---
   async function deleteUserApi(id: number | string) {
-    const res = await fetch(`${API_BASE}/users/${id}`, { method: "DELETE", headers: { "Content-Type": "application/json" } })
+    const res = await fetch(`${API_BASE}/users/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    })
     if (!res.ok) {
       let msg = `Delete failed: ${res.status}`
       try {
@@ -46,9 +56,11 @@ export function Settings({ open, onClose }: SettingsProps) {
     }
   }
 
-  // Загрузка пользователей из БД -> settings.executors
+  // Загрузка пользователей и тегов при открытии
   useEffect(() => {
     if (!open) return
+
+    // пользователи
     setListLoading(true)
     setError(null)
     getUsers()
@@ -58,10 +70,20 @@ export function Settings({ open, onClose }: SettingsProps) {
           name: u.name,
           role: u.role_text || "",
         }))
-        setSettings({ ...settings, executors: mapped })
+        setSettings((prev) => ({ ...prev, executors: mapped }))
       })
       .catch((e: any) => setError(e?.message || "Не удалось загрузить исполнителей"))
       .finally(() => setListLoading(false))
+
+    // теги
+    setTagLoading(true)
+    setTagError(null)
+    getBoardTags()
+      .then((tags) => {
+        setSettings((prev) => ({ ...prev, tags: tags.map((t) => t.title) }))
+      })
+      .catch((e: any) => setTagError(e?.message || "Не удалось загрузить теги"))
+      .finally(() => setTagLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
@@ -76,7 +98,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     try {
       const created = await createUser(name, role)
       const newExec: Executor = { id: String(created.id), name, role }
-      setSettings({ ...settings, executors: [...settings.executors, newExec] })
+      setSettings((prev) => ({ ...prev, executors: [...prev.executors, newExec] }))
       setExecutorForm({ name: "", role: "" })
     } catch (e: any) {
       setError(e?.message || "Не удалось создать исполнителя")
@@ -93,12 +115,12 @@ export function Settings({ open, onClose }: SettingsProps) {
     setError(null)
     try {
       await updateUser(editingExecutor, { name, role_text: executorForm.role || "" })
-      setSettings({
-        ...settings,
-        executors: settings.executors.map((exec) =>
+      setSettings((prev) => ({
+        ...prev,
+        executors: prev.executors.map((exec) =>
           exec.id === editingExecutor ? { ...exec, name, role: executorForm.role || "" } : exec,
         ),
-      })
+      }))
       setExecutorForm({ name: "", role: "" })
       setEditingExecutor(null)
     } catch (e: any) {
@@ -113,10 +135,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     setError(null)
     try {
       await deleteUserApi(id)
-      setSettings({
-        ...settings,
-        executors: settings.executors.filter((exec) => exec.id !== id),
-      })
+      setSettings((prev) => ({ ...prev, executors: prev.executors.filter((exec) => exec.id !== id) }))
     } catch (e: any) {
       setError(e?.message || "Не удалось удалить исполнителя")
     } finally {
@@ -129,16 +148,49 @@ export function Settings({ open, onClose }: SettingsProps) {
     setEditingExecutor(executor.id)
   }
 
-  // --- Tags (пока локально, как было) ---
-  const handleAddTag = () => {
-    if (!newTag.trim()) return
-    if (settings.tags.includes(newTag.trim())) return
-    setSettings({ ...settings, tags: [...settings.tags, newTag.trim()] })
-    setNewTag("")
+  // --- Tags (через БД) ---
+  const refreshTags = async () => {
+    const tags = await getBoardTags()
+    setSettings((prev) => ({ ...prev, tags: tags.map((t) => t.title) }))
   }
 
-  const handleDeleteTag = (tag: string) => {
-    setSettings({ ...settings, tags: settings.tags.filter((t) => t !== tag) })
+  const handleAddTag = async () => {
+    const title = newTag.trim()
+    if (!title) return
+    // локальная проверка на дубль
+    if (settings.tags.includes(title)) {
+      setNewTag("")
+      return
+    }
+    setTagLoading(true)
+    setTagError(null)
+    try {
+      await createBoardTag(1, { title }) // boardId не используется на бэке, но параметр обязателен
+      await refreshTags()
+      setNewTag("")
+    } catch (e: any) {
+      setTagError(e?.message || "Не удалось создать тег")
+    } finally {
+      setTagLoading(false)
+    }
+  }
+
+  const handleDeleteTag = async (title: string) => {
+    setTagLoading(true)
+    setTagError(null)
+    try {
+      // найдём id тега по title
+      const tags = await getBoardTags()
+      const found = tags.find((t) => t.title === title)
+      if (found) {
+        await deleteBoardTag(1, found.id)
+      }
+      await refreshTags()
+    } catch (e: any) {
+      setTagError(e?.message || "Не удалось удалить тег")
+    } finally {
+      setTagLoading(false)
+    }
   }
 
   return (
@@ -241,7 +293,7 @@ export function Settings({ open, onClose }: SettingsProps) {
             </div>
           </Card>
 
-          {/* Теги (пока локально) */}
+          {/* Теги */}
           <Card className="p-4">
             <h3 className="text-lg font-semibold mb-4">Теги</h3>
 
@@ -254,12 +306,16 @@ export function Settings({ open, onClose }: SettingsProps) {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleAddTag()
                   }}
+                  disabled={tagLoading}
                 />
-                <Button onClick={handleAddTag} size="sm">
+                <Button onClick={handleAddTag} size="sm" disabled={tagLoading}>
                   <Plus className="h-4 w-4 mr-1" />
                   Добавить
                 </Button>
               </div>
+
+              {tagError && <p className="text-sm text-red-500">{tagError}</p>}
+              {tagLoading && <p className="text-sm text-muted-foreground">Синхронизация тегов…</p>}
 
               <div className="flex flex-wrap gap-2">
                 {settings.tags.length === 0 ? (
@@ -268,7 +324,13 @@ export function Settings({ open, onClose }: SettingsProps) {
                   settings.tags.map((tag) => (
                     <Badge key={tag} variant="secondary" className="gap-2">
                       {tag}
-                      <button onClick={() => handleDeleteTag(tag)} className="hover:text-destructive" type="button">
+                      <button
+                        onClick={() => handleDeleteTag(tag)}
+                        className="hover:text-destructive"
+                        type="button"
+                        disabled={tagLoading}
+                        title="Удалить тег"
+                      >
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </Badge>
@@ -286,4 +348,3 @@ export function Settings({ open, onClose }: SettingsProps) {
     </Dialog>
   )
 }
-
