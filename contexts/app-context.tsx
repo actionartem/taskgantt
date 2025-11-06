@@ -14,14 +14,14 @@ import {
 import type { Task, AppSettings, GroupBy } from "@/lib/types"
 import { storage } from "@/lib/storage"
 
-// Новые API-обёртки (у тебя уже есть обновлённый lib/api.ts)
+// Обновлённые API-обёртки
 import {
   fetchTasks,
   createTaskNew,
   updateTaskNew,
   deleteTaskNew,
   getUsers,
-  getBoardTags, // теги теперь глобальные, функция — обёртка
+  getTags, // <-- теги теперь глобальные
 } from "@/lib/api"
 
 interface AppContextType {
@@ -66,9 +66,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refreshFromApi = useCallback(async () => {
     // грузим пользователей + теги + задачи параллельно
     const [users, tags, apiTasks] = await Promise.all([
-      getUsers(),       // [{ id, name, role_text? }]
-      getBoardTags(1),  // глобально; boardId игнорируется
-      fetchTasks(),     // реальные таски из БД
+      getUsers(),  // [{ id, name, role_text? }]
+      getTags(),   // [{ id, title, color }]
+      fetchTasks() // реальные таски из БД
     ])
 
     // приводим исполнителей к твоему типу из settings (id — string)
@@ -91,12 +91,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })
 
     setTasksState(apiTasks)
-    storage.saveTasks(apiTasks) // храним локальный кеш для «быстрой первой отрисовки»
+    storage.saveTasks(apiTasks) // локальный кеш для «быстрой первой отрисовки»
   }, [])
 
   // Загрузка данных (быстрый кеш из localStorage + затем API)
   useEffect(() => {
-    // 1) мгновенная отрисовка из localStorage (как было)
+    // 1) мгновенная отрисовка из localStorage
     setTasksState(storage.getTasks())
     setSettingsState(storage.getSettings())
 
@@ -111,7 +111,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // 3) подтягиваем свежие данные с API (заменит локальный кеш)
     refreshFromApi().catch((e) => {
-      // в случае ошибки остаёмся на кешированных значениях
       console.error("refreshFromApi failed:", e)
     })
   }, [refreshFromApi])
@@ -119,11 +118,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ===== сеттеры, совместимые с текущим кодом =====
   const setTasks = (newTasks: Task[]) => {
     setTasksState(newTasks)
-    storage.saveTasks(newTasks) // оставляем кеширование как раньше
+    storage.saveTasks(newTasks)
   }
 
   // ====== CRUD через API с оптимистичными апдейтами ======
-
   const addTask = (task: Task) => {
     // Оптимистично добавим в UI
     setTasksState((prev) => {
@@ -132,7 +130,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return next
     })
 
-    // Отправляем на сервер (RU→API маппинг уже внутри createTaskNew)
     createTaskNew({
       id: task.id, // поддержка пользовательского ID
       title: task.title,
@@ -173,7 +170,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       startDate: updates.startDate,
       endDate: updates.endDate,
       link: (updates as any).link,
-      // updatedBy можно добавить при появлении авторизации
     })
       .then(() => refreshFromApi())
       .catch((e) => {
@@ -218,9 +214,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // SSR-гард как у тебя
-  if (!mounted) return null
-
+  // ВАЖНО: хуки ниже должны вызываться всегда в одном и том же порядке.
+  // Поэтому рассчитываем value ДО guard'а mounted.
   const value = useMemo<AppContextType>(
     () => ({
       tasks,
@@ -249,6 +244,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setGroupBy,
     ],
   )
+
+  // SSR-гард
+  if (!mounted) return null
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
