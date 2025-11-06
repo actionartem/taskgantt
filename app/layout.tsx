@@ -9,9 +9,9 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Система управления задачами",
-  description: "Управление задачами с диаграммой Ганта",
-  generator: "v0.app",
+  title: "Мониторинг задач",
+  description: "Мониторинг задач",
+  generator: "artivtw",
 }
 
 export default function RootLayout({
