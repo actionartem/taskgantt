@@ -70,7 +70,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
 
       {/* Right controls */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Компактный Select статуса */}
+        {/* Селект статуса: ещё тоньше по вертикали + стабильные клики */}
         <Select
           open={open}
           onOpenChange={setOpen}
@@ -78,17 +78,32 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
           onValueChange={(v) => handleStatusChange(v as TaskStatus)}
         >
           <SelectTrigger
-            // компактные размеры, ширина по контенту
-            className="h-6 px-2 text-xs rounded-md border-0 shadow-none min-w-0 w-auto whitespace-nowrap"
+            // ещё уже: высота 20px, компактные отступы и шрифт
+            className="h-5 min-h-0 px-1.5 py-0 text-[11px] leading-none rounded-md border-0 shadow-none w-auto min-w-0 whitespace-nowrap"
             style={{ backgroundColor: STATUS_COLORS[task.status], color: "white" }}
           >
             <SelectValue />
           </SelectTrigger>
 
-          {/* popper: выпадающий список поверх скролла, клики ловит стабильно */}
-          <SelectContent position="popper" side="bottom" align="start" className="min-w-[12rem]">
+          {/* popper + высокий z-index, чтобы меню было кликабельным над всем */}
+          <SelectContent
+            position="popper"
+            side="bottom"
+            align="start"
+            className="z-[60] min-w-[12rem]"
+          >
             {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
+              <SelectItem
+                key={s}
+                value={s}
+                // На некоторых раскладках Radix может не триггерить выбор из-за оверлеев.
+                // Принудительно применяем статус через onSelect — клики всегда срабатывают.
+                onSelect={(e) => {
+                  e.preventDefault()
+                  handleStatusChange(s)
+                }}
+                className="text-[12px] h-7 py-0 leading-6"
+              >
                 {s}
               </SelectItem>
             ))}
