@@ -14,14 +14,14 @@ import {
 import type { Task, AppSettings, GroupBy } from "@/lib/types"
 import { storage } from "@/lib/storage"
 
-// Обновлённые API-обёртки
+// Используем только существующие экспорты из lib/api.ts
 import {
   fetchTasks,
   createTaskNew,
   updateTaskNew,
   deleteTaskNew,
   getUsers,
-  getTags, // <-- теги теперь глобальные
+  getBoardTags, // <-- теги берём отсюда
 } from "@/lib/api"
 
 interface AppContextType {
@@ -42,17 +42,13 @@ const AppContext = createContext<AppContextType | undefined>(undefined)
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasksState] = useState<Task[]>([])
-  const [settings, setSettingsState] = useState<AppSettings>({
-    executors: [],
-    tags: [],
-  })
+  const [settings, setSettingsState] = useState<AppSettings>({ executors: [], tags: [] })
   const [theme, setTheme] = useState<"light" | "dark">("light")
   const [groupBy, setGroupBy] = useState<GroupBy>("none")
   const [mounted, setMounted] = useState(false)
 
-  // ===== Внутренние утилиты =====
+  // ---- утилита согласования старых/новых полей исполнителя
   const safeAssigneeId = (t: Partial<Task>): number | null | undefined => {
-    // поддержка старого поля assignee (string) и нового assigneeId (number|null)
     const anyT = t as any
     if (typeof anyT?.assigneeId === "number") return anyT.assigneeId
     if (anyT?.assigneeId === null) return null
@@ -64,66 +60,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const refreshFromApi = useCallback(async () => {
-    // грузим пользователей + теги + задачи параллельно
+    // Параллельно тянем пользователей, теги и задачи
     const [users, tags, apiTasks] = await Promise.all([
-      getUsers(),  // [{ id, name, role_text? }]
-      getTags(),   // [{ id, title, color }]
-      fetchTasks() // реальные таски из БД
+      getUsers(),
+      // getBoardTags теперь может внутри ходить на /tags — id игнорируется
+      getBoardTags(1),
+      fetchTasks(),
     ])
 
-    // приводим исполнителей к твоему типу из settings (id — string)
     const executors = users.map((u) => ({
       id: String(u.id),
       name: u.name,
       role: (u as any).role_text ?? undefined,
     }))
-
     const tagNames = tags.map((t) => t.title)
 
     setSettingsState((prev) => {
-      const merged: AppSettings = {
-        ...prev,
-        executors,
-        tags: tagNames,
-      }
-      storage.saveSettings(merged) // кеш — как и раньше
+      const merged: AppSettings = { ...prev, executors, tags: tagNames }
+      storage.saveSettings(merged)
       return merged
     })
 
     setTasksState(apiTasks)
-    storage.saveTasks(apiTasks) // локальный кеш для «быстрой первой отрисовки»
+    storage.saveTasks(apiTasks)
   }, [])
 
-  // Загрузка данных (быстрый кеш из localStorage + затем API)
+  // Быстрая отрисовка из localStorage + последующее обновление с API
   useEffect(() => {
-    // 1) мгновенная отрисовка из localStorage
     setTasksState(storage.getTasks())
     setSettingsState(storage.getSettings())
 
-    // 2) тема — без изменений
     const savedTheme = storage.getTheme()
     setTheme(savedTheme)
-    if (savedTheme === "dark") {
-      document.documentElement.classList.add("dark")
-    }
+    if (savedTheme === "dark") document.documentElement.classList.add("dark")
 
     setMounted(true)
 
-    // 3) подтягиваем свежие данные с API (заменит локальный кеш)
-    refreshFromApi().catch((e) => {
-      console.error("refreshFromApi failed:", e)
-    })
+    refreshFromApi().catch((e) => console.error("refreshFromApi failed:", e))
   }, [refreshFromApi])
 
-  // ===== сеттеры, совместимые с текущим кодом =====
+  // --- публичные методы контекста
   const setTasks = (newTasks: Task[]) => {
     setTasksState(newTasks)
     storage.saveTasks(newTasks)
   }
 
-  // ====== CRUD через API с оптимистичными апдейтами ======
   const addTask = (task: Task) => {
-    // Оптимистично добавим в UI
+    // оптимистично
     setTasksState((prev) => {
       const next = [...prev, task]
       storage.saveTasks(next)
@@ -131,7 +114,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })
 
     createTaskNew({
-      id: task.id, // поддержка пользовательского ID
+      id: task.id,
       title: task.title,
       description: task.description ?? null,
       status: task.status,
@@ -144,7 +127,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(() => refreshFromApi())
       .catch((e) => {
         console.error("addTask failed:", e)
-        // откатываем оптимизм
         setTasksState((prev) => {
           const next = prev.filter((t) => t.id !== task.id)
           storage.saveTasks(next)
@@ -154,7 +136,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateTask = (id: number, updates: Partial<Task>) => {
-    // Оптимистичный апдейт в UI
     setTasksState((prev) => {
       const next = prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
       storage.saveTasks(next)
@@ -174,14 +155,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(() => refreshFromApi())
       .catch((e) => {
         console.error("updateTask failed:", e)
-        // если ошибка — перезагрузим с сервера фактическое состояние
         refreshFromApi().catch(() => {})
       })
   }
 
   const deleteTask = (id: number) => {
-    // Оптимистично удалим в UI
-    const prevSnapshot = tasks
+    const snapshot = tasks
     setTasksState((prev) => {
       const next = prev.filter((t) => t.id !== id)
       storage.saveTasks(next)
@@ -192,9 +171,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .then(() => refreshFromApi())
       .catch((e) => {
         console.error("deleteTask failed:", e)
-        // откат к снимку
-        setTasksState(prevSnapshot)
-        storage.saveTasks(prevSnapshot)
+        setTasksState(snapshot)
+        storage.saveTasks(snapshot)
       })
   }
 
@@ -204,18 +182,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    setTheme(newTheme)
-    storage.saveTheme(newTheme)
-    if (newTheme === "dark") {
-      document.documentElement.classList.add("dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-    }
+    const next = theme === "light" ? "dark" : "light"
+    setTheme(next)
+    storage.saveTheme(next)
+    document.documentElement.classList.toggle("dark", next === "dark")
   }
 
-  // ВАЖНО: хуки ниже должны вызываться всегда в одном и том же порядке.
-  // Поэтому рассчитываем value ДО guard'а mounted.
+  // value рассчитываем ДО guard'а, чтобы порядок хуков не менялся
   const value = useMemo<AppContextType>(
     () => ({
       tasks,
@@ -230,22 +203,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toggleTheme,
       setGroupBy,
     }),
-    [
-      tasks,
-      settings,
-      theme,
-      groupBy,
-      setTasks,
-      addTask,
-      updateTask,
-      deleteTask,
-      setSettings,
-      toggleTheme,
-      setGroupBy,
-    ],
+    [tasks, settings, theme, groupBy],
   )
 
-  // SSR-гард
   if (!mounted) return null
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
@@ -253,8 +213,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 export function useApp() {
   const context = useContext(AppContext)
-  if (!context) {
-    throw new Error("useApp must be used within AppProvider")
-  }
+  if (!context) throw new Error("useApp must be used within AppProvider")
   return context
 }
