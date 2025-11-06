@@ -1,7 +1,6 @@
 // lib/api.ts
 
 import {
-  // типы UI/API и маппинги RU⇄EN
   Task,
   ApiTask,
   CreateTaskInput,
@@ -14,17 +13,12 @@ import {
 
 /* ===================== BASE ===================== */
 
-// Базовый адрес API (обрезаем завершающий / на всякий случай)
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ||
   "https://api.simpletracker.ru").replace(/\/$/, "")
 
-// Универсальная обёртка над fetch
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(API_BASE + path, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
   })
 
@@ -41,10 +35,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (res.status === 204) {
-    // @ts-expect-error — для 204 тела нет
+    // @ts-expect-error — у 204 тела нет
     return {}
   }
-
   return res.json() as Promise<T>
 }
 
@@ -59,29 +52,33 @@ function ymdFromIso(iso?: string | null): string | null {
   return new Date(iso).toISOString().slice(0, 10)
 }
 
-/** RU -> API: если статус не в словаре — оставляем как есть (пасc-тру) */
+/** Канонические соответствия — только 3 базовых статуса */
+const CANONICAL_RU_TO_API: Record<string, string> = {
+  "не в работе": "new",
+  "разработка": "in_progress",
+  "завершена": "done",
+}
+const CANONICAL_API_TO_RU: Record<string, string> = {
+  new: "не в работе",
+  in_progress: "разработка",
+  done: "завершена",
+}
+
+/** RU -> API: маппим только 3 канонических; любые другие — оставляем как есть */
 function ruToApiStatusFlex(s?: string | null): string | null {
   if (!s) return null
   const key = s.toLowerCase()
-  const map = STATUS_RU_TO_API as Record<string, string>
-  return map[key] ?? s
+  if (key in CANONICAL_RU_TO_API) return CANONICAL_RU_TO_API[key]
+  return s
 }
 
-/** API -> RU: если пришёл код из словаря — маппим, иначе оставляем как есть */
+/** API -> RU: маппим только 3 канонических; любые другие — показываем как есть */
 function apiToRuStatusFlex(s?: string | null): string {
   if (!s) return "не в работе"
-  try {
-    // STATUS_API_TO_RU может быть функцией — поддержим оба варианта
-    const fn = STATUS_API_TO_RU as unknown as (x: string) => string | undefined
-    const v = fn?.(s)
-    return v ?? s
-  } catch {
-    const anyMap = STATUS_API_TO_RU as unknown as Record<string, string>
-    return anyMap?.[s] ?? s
-  }
+  return CANONICAL_API_TO_RU[s] ?? s
 }
 
-// API → UI
+/** API → UI */
 function fromApiTask(t: ApiTask): Task {
   return {
     id: Number(t.id),
@@ -99,7 +96,7 @@ function fromApiTask(t: ApiTask): Task {
   }
 }
 
-// UI (RU) → API (EN)
+/** UI (RU) → API */
 function toApiCreate(input: CreateTaskInput) {
   return {
     ...(input.id ? { id: input.id } : {}),
@@ -270,8 +267,6 @@ export async function deleteTaskNew(id: number) {
 }
 
 /* ===================== TASKS (ОБРАТНАЯ СОВМЕСТИМОСТЬ) ===================== */
-/* Эти функции оставлены, чтобы ничего не сломалось в существующем коде.
-   Они игнорируют boardId и зовут новые эндпоинты. */
 
 export async function getTasks(
   _boardId?: number | string,
@@ -368,7 +363,7 @@ export async function updateTask(
   return updateTaskNew(Number(taskId), patch)
 }
 
-// Историю мы убрали на бэке; оставим функцию как «мягкий» заглушечный вызов.
+/* Историю мы убрали — возвращаем пустой массив для совместимости */
 export async function getTaskHistory(_taskId: number | string) {
   return [] as Array<{
     id: number
@@ -381,12 +376,10 @@ export async function getTaskHistory(_taskId: number | string) {
 }
 
 /* ===================== TAGS ===================== */
-/* Теги теперь глобальные. Обёртки ниже сохраняют прежние названия. */
 
 export async function getBoardTags(_boardId?: number | string) {
   return request<Array<{ id: number; title: string; color: string }>>(`/tags`)
 }
-
 export async function createBoardTag(
   _boardId: number | string,
   payload: { title: string; color?: string },
@@ -396,25 +389,21 @@ export async function createBoardTag(
     body: JSON.stringify(payload),
   })
 }
-
 export async function deleteBoardTag(_boardId: number | string, tagId: number | string) {
   return request<{}>(`/tags/${tagId}`, { method: "DELETE" })
 }
-
 export async function attachTagToTask(taskId: number | string, tagId: number | string) {
   return request<{}>(`/tasks/${taskId}/tags`, {
     method: "POST",
     body: JSON.stringify({ tag_id: tagId }),
   })
 }
-
 export async function detachTagFromTask(taskId: number | string, tagId: number | string) {
   return request<{}>(`/tasks/${taskId}/tags/${tagId}`, { method: "DELETE" })
 }
 
-/* ===================== BOARDS (ДЕПРЕКЕЙТЕД) ===================== */
-// Для совместимости — возвращаем фиктивную «единую» доску.
-// Если в коде больше не используется — можно удалить.
+/* ===================== BOARDS (DEPRECATED) ===================== */
 export async function getBoards(_userId?: number | string) {
   return Promise.resolve([{ id: 1, title: "Общие задачи", created_at: "" }])
 }
+
