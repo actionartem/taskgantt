@@ -8,12 +8,12 @@ import { useApp } from "@/contexts/app-context"
 interface TaskFiltersProps {
   search: string
   status: TaskStatus | "Все"
-  assignee: string
+  assigneeId: string // "Все" или строковый id
   tag: string
   priority: TaskPriority | "Все"
   onSearchChange: (value: string) => void
   onStatusChange: (value: TaskStatus | "Все") => void
-  onAssigneeChange: (value: string) => void
+  onAssigneeChange: (value: string) => void // сюда прилетает "Все" или id
   onTagChange: (value: string) => void
   onPriorityChange: (value: TaskPriority | "Все") => void
 }
@@ -34,7 +34,7 @@ const PRIORITIES: TaskPriority[] = ["низкий", "средний", "высо�
 export function TaskFilters({
   search,
   status,
-  assignee,
+  assigneeId,
   tag,
   priority,
   onSearchChange,
@@ -72,14 +72,14 @@ export function TaskFilters({
         </div>
 
         <div className="flex items-center gap-2">
-          <Select value={assignee} onValueChange={onAssigneeChange}>
+          <Select value={assigneeId} onValueChange={onAssigneeChange}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Исполнитель" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Все">Все</SelectItem>
               {settings.executors.map((exec) => (
-                <SelectItem key={exec.id} value={exec.name}>
+                <SelectItem key={exec.id} value={String(exec.id)}>
                   {exec.name}
                 </SelectItem>
               ))}
