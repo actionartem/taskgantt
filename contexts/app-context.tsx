@@ -219,7 +219,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       })
   }
 
+  // >>> Безопасная запись настроек (важно!)
   const setSettings = (newSettings: AppSettings) => {
+    if (!newSettings || typeof newSettings !== "object") {
+      console.warn("Skip invalid settings:", newSettings)
+      return
+    }
     setSettingsState(newSettings)
     storage.saveSettings(newSettings)
   }
