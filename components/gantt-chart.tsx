@@ -15,7 +15,9 @@ export function GanttChart() {
   const [dragType, setDragType] = useState<"move" | "resize-left" | "resize-right" | null>(null)
   const [dragStartX, setDragStartX] = useState(0)
   const [dragStartDate, setDragStartDate] = useState<Date | null>(null)
-  const chartRef = useRef<HTMLDivElement>(null)
+  const mainScrollRef = useRef<HTMLDivElement>(null)
+  const topScrollRef = useRef<HTMLDivElement>(null)
+  const isSyncingScrollRef = useRef(false)
 
   // Фильтруем задачи с датами и не скрытые
   const visibleTasks = tasks.filter(
@@ -52,6 +54,7 @@ export function GanttChart() {
   const { minDate, maxDate } = getDateRange()
   const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
   const dayWidth = 40 // пикселей на день
+  const chartWidth = (totalDays + 1) * dayWidth + 200
 
   const getPositionFromDate = (date: Date) => {
     const days = Math.ceil((date.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -143,6 +146,47 @@ export function GanttChart() {
 
   const timeline = generateTimeline()
 
+  useEffect(() => {
+    const topScroll = topScrollRef.current
+    const mainScroll = mainScrollRef.current
+
+    if (!topScroll || !mainScroll) {
+      return
+    }
+
+    const syncScroll = (source: HTMLDivElement, target: HTMLDivElement) => {
+      if (isSyncingScrollRef.current) {
+        return
+      }
+
+      isSyncingScrollRef.current = true
+      target.scrollLeft = source.scrollLeft
+      requestAnimationFrame(() => {
+        isSyncingScrollRef.current = false
+      })
+    }
+
+    const handleTopScroll = () => {
+      if (topScroll && mainScroll) {
+        syncScroll(topScroll, mainScroll)
+      }
+    }
+
+    const handleMainScroll = () => {
+      if (topScroll && mainScroll) {
+        syncScroll(mainScroll, topScroll)
+      }
+    }
+
+    topScroll.addEventListener("scroll", handleTopScroll)
+    mainScroll.addEventListener("scroll", handleMainScroll)
+
+    return () => {
+      topScroll.removeEventListener("scroll", handleTopScroll)
+      mainScroll.removeEventListener("scroll", handleMainScroll)
+    }
+  }, [])
+
   if (visibleTasks.length === 0) {
     return (
       <Card className="flex flex-col h-full">
@@ -162,16 +206,46 @@ export function GanttChart() {
         <h2 className="text-lg font-semibold">Диаграмма Ганта</h2>
       </div>
 
-      <div className="flex-1 overflow-auto" ref={chartRef}>
+      <div className="border-b">
+        <div ref={topScrollRef} className="h-4 overflow-x-auto">
+          <div style={{ width: `${chartWidth}px`, height: "1px" }} />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto" ref={mainScrollRef}>
         <div className="min-w-max">
           {/* Временная шкала */}
           <div className="sticky top-0 z-10 bg-card border-b">
             <div className="flex h-12 items-center" style={{ paddingLeft: "200px" }}>
-              {timeline.map((date, index) => (
-                <div key={index} className="text-xs text-muted-foreground" style={{ width: `${dayWidth * 7}px` }}>
-                  {date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-                </div>
-              ))}
+              {timeline.map((date, index) => {
+                const friday = new Date(date)
+                friday.setDate(friday.getDate() + 4)
+
+                return (
+                  <div
+                    key={index}
+                    className="relative h-full"
+                    style={{ width: `${dayWidth * 7}px` }}
+                  >
+                    <span
+                      className="absolute text-xs text-muted-foreground whitespace-nowrap pointer-events-none"
+                      style={{ top: "50%", left: 0, transform: "translateY(-50%)" }}
+                    >
+                      {date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                    </span>
+                    <span
+                      className="absolute text-xs text-muted-foreground whitespace-nowrap pointer-events-none"
+                      style={{
+                        top: "50%",
+                        left: `${dayWidth * 4}px`,
+                        transform: "translate(-50%, -50%)",
+                      }}
+                    >
+                      {friday.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
