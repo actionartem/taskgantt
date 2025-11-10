@@ -11,7 +11,7 @@ import {
   useMemo,
 } from "react"
 
-import type { Task, AppSettings, GroupBy } from "@/lib/types"
+import type { Task, AppSettings, GroupBy, TaskStatus } from "@/lib/types"
 import { storage } from "@/lib/storage"
 
 // Используем только существующие экспорты из lib/api.ts
@@ -29,6 +29,7 @@ interface AppContextType {
   settings: AppSettings
   theme: "light" | "dark"
   groupBy: GroupBy
+  hiddenStatuses: TaskStatus[]
   setTasks: (tasks: Task[]) => void
   addTask: (task: Task) => void
   updateTask: (id: number, updates: Partial<Task>) => void
@@ -36,6 +37,7 @@ interface AppContextType {
   setSettings: (settings: AppSettings) => void
   toggleTheme: () => void
   setGroupBy: (groupBy: GroupBy) => void
+  toggleHiddenStatus: (status: TaskStatus) => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -45,6 +47,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettingsState] = useState<AppSettings>({ executors: [], tags: [] })
   const [theme, setTheme] = useState<"light" | "dark">("light")
   const [groupBy, setGroupBy] = useState<GroupBy>("none")
+  const [hiddenStatuses, setHiddenStatuses] = useState<TaskStatus[]>([])
   const [mounted, setMounted] = useState(false)
 
   // ---- утилита согласования старых/новых полей исполнителя
@@ -236,6 +239,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle("dark", next === "dark")
   }
 
+  const toggleHiddenStatus = useCallback((status: TaskStatus) => {
+    setHiddenStatuses((prev) =>
+      prev.includes(status) ? prev.filter((item) => item !== status) : [...prev, status],
+    )
+  }, [])
+
   // value рассчитываем ДО guard'а, чтобы порядок хуков не менялся
   const value = useMemo<AppContextType>(
     () => ({
@@ -243,6 +252,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       settings,
       theme,
       groupBy,
+      hiddenStatuses,
       setTasks,
       addTask,
       updateTask,
@@ -250,8 +260,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSettings,
       toggleTheme,
       setGroupBy,
+      toggleHiddenStatus,
     }),
-    [tasks, settings, theme, groupBy],
+    [tasks, settings, theme, groupBy, hiddenStatuses, toggleHiddenStatus],
   )
 
   if (!mounted) return null

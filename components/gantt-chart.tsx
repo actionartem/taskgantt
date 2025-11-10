@@ -10,7 +10,7 @@ import { useApp } from "@/contexts/app-context"
 import { groupTasks } from "@/lib/task-utils"
 
 export function GanttChart() {
-  const { tasks, updateTask, groupBy } = useApp()
+  const { tasks, updateTask, groupBy, hiddenStatuses } = useApp()
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
   const [dragType, setDragType] = useState<"move" | "resize-left" | "resize-right" | null>(null)
   const [dragStartX, setDragStartX] = useState(0)
@@ -18,7 +18,13 @@ export function GanttChart() {
   const chartRef = useRef<HTMLDivElement>(null)
 
   // Фильтруем задачи с датами и не скрытые
-  const visibleTasks = tasks.filter((task) => task.startDate && task.endDate && !task.hiddenFromGantt)
+  const visibleTasks = tasks.filter(
+    (task) =>
+      task.startDate &&
+      task.endDate &&
+      !task.hiddenFromGantt &&
+      !hiddenStatuses.includes(task.status),
+  )
 
   // Группируем задачи
   const groupedTasks = groupTasks(visibleTasks, groupBy)
