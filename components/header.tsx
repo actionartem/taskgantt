@@ -55,9 +55,9 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
           <h1 className="text-2xl font-bold">Миноры</h1>
 
           <div className="flex items-center gap-2">
-            <Button asChild>
+            <Button asChild className="fixed left-4 top-4 z-50">
               <a href="https://risk.simpletracker.ru/" target="_blank" rel="noopener noreferrer">
-                Планирование загрузки команды разработки
+                Планирование ресурсов команды разработки
               </a>
             </Button>
 
