@@ -55,6 +55,12 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
           <h1 className="text-2xl font-bold">Миноры</h1>
 
           <div className="flex items-center gap-2">
+            <Button asChild>
+              <a href="https://risk.simpletracker.ru/" target="_blank" rel="noopener noreferrer">
+                Планирование загрузки команды разработки
+              </a>
+            </Button>
+
             <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Группировка" />
