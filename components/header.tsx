@@ -52,14 +52,17 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
     <header className="border-b bg-card">
       <div className="container mx-auto px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Миноры</h1>
-
-          <div className="flex items-center gap-2">
-            <Button asChild className="fixed left-4 top-4 z-50">
+          <div className="flex items-center gap-3">
+            <Button asChild>
               <a href="https://risk.simpletracker.ru/" target="_blank" rel="noopener noreferrer">
                 Планирование ресурсов команды разработки
               </a>
             </Button>
+
+            <h1 className="text-2xl font-bold">Миноры</h1>
+          </div>
+
+          <div className="flex items-center gap-2">
 
             <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
               <SelectTrigger className="w-[180px]">
