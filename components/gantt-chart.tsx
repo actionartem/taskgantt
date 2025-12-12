@@ -2,14 +2,18 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useMemo, useState, useRef, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import type { Task } from "@/lib/types"
 import { STATUS_COLORS } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
 import { groupTasks } from "@/lib/task-utils"
 
-export function GanttChart() {
+interface GanttChartProps {
+  onEditTask: (task: Task) => void
+}
+
+export function GanttChart({ onEditTask }: GanttChartProps) {
   const { tasks, updateTask, groupBy, hiddenStatuses } = useApp()
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
   const [dragType, setDragType] = useState<"move" | "resize-left" | "resize-right" | null>(null)
@@ -55,6 +59,13 @@ export function GanttChart() {
   const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
   const dayWidth = 40 // пикселей на день
   const chartWidth = (totalDays + 1) * dayWidth + 200
+
+  const gridBackground = useMemo(() => {
+    const dayStep = `${dayWidth}px`
+    const weekStep = `${dayWidth * 7}px`
+
+    return `repeating-linear-gradient(to right, rgba(0,0,0,0.04) 0, rgba(0,0,0,0.04) 1px, transparent 1px, transparent ${dayStep}), repeating-linear-gradient(to right, rgba(59,130,246,0.15) 0, rgba(59,130,246,0.15) 2px, transparent 2px, transparent ${weekStep})`
+  }, [dayWidth])
 
   const getPositionFromDate = (date: Date) => {
     const days = Math.ceil((date.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -132,19 +143,27 @@ export function GanttChart() {
   }, [draggedTask, dragType, dragStartX, dragStartDate, dayWidth, updateTask])
 
   // Генерация временной шкалы
-  const generateTimeline = () => {
-    const timeline = []
+  const timeline = useMemo(() => {
+    const timelineWeeks = []
     const currentDate = new Date(minDate)
+    const dayOfWeek = currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1 // понедельник = 0
+    currentDate.setDate(currentDate.getDate() - dayOfWeek)
 
     while (currentDate <= maxDate) {
-      timeline.push(new Date(currentDate))
-      currentDate.setDate(currentDate.getDate() + 7) // по неделям
+      timelineWeeks.push(new Date(currentDate))
+      currentDate.setDate(currentDate.getDate() + 7)
     }
 
-    return timeline
-  }
+    return timelineWeeks
+  }, [maxDate, minDate])
 
-  const timeline = generateTimeline()
+  const timelineDays = useMemo(() => {
+    return Array.from({ length: totalDays + 1 }, (_, index) => {
+      const date = new Date(minDate)
+      date.setDate(date.getDate() + index)
+      return date
+    })
+  }, [minDate, totalDays])
 
   useEffect(() => {
     const topScroll = topScrollRef.current
@@ -216,36 +235,57 @@ export function GanttChart() {
         <div className="min-w-max">
           {/* Временная шкала */}
           <div className="sticky top-0 z-10 bg-card border-b">
-            <div className="flex h-12 items-center" style={{ paddingLeft: "200px" }}>
-              {timeline.map((date, index) => {
-                const friday = new Date(date)
-                friday.setDate(friday.getDate() + 4)
+            <div className="flex flex-col" style={{ paddingLeft: "200px" }}>
+              <div className="flex h-12 items-center border-b">
+                {timeline.map((date, index) => {
+                  const friday = new Date(date)
+                  friday.setDate(friday.getDate() + 4)
 
-                return (
-                  <div
-                    key={index}
-                    className="relative h-full"
-                    style={{ width: `${dayWidth * 7}px` }}
-                  >
-                    <span
-                      className="absolute text-xs text-muted-foreground whitespace-nowrap pointer-events-none"
-                      style={{ top: "50%", left: 0, transform: "translateY(-50%)" }}
+                  return (
+                    <div
+                      key={index}
+                      className="relative h-full border-l last:border-r"
+                      style={{ width: `${dayWidth * 7}px` }}
                     >
-                      {date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-                    </span>
-                    <span
-                      className="absolute text-xs text-muted-foreground whitespace-nowrap pointer-events-none"
-                      style={{
-                        top: "50%",
-                        left: `${dayWidth * 4}px`,
-                        transform: "translate(-50%, -50%)",
-                      }}
+                      <span
+                        className="absolute text-xs text-muted-foreground whitespace-nowrap pointer-events-none"
+                        style={{ top: "50%", left: 8, transform: "translateY(-50%)" }}
+                      >
+                        {date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                      </span>
+                      <span
+                        className="absolute text-xs text-muted-foreground whitespace-nowrap pointer-events-none"
+                        style={{
+                          top: "50%",
+                          left: `${dayWidth * 3.5}px`,
+                          transform: "translate(-50%, -50%)",
+                        }}
+                      >
+                        {friday.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="flex h-8 text-[11px] text-muted-foreground">
+                {timelineDays.map((date, index) => {
+                  const isWeekStart = date.getDay() === 1
+
+                  return (
+                    <div
+                      key={index}
+                      className={`flex items-center justify-center border-l first:border-l-0 ${
+                        isWeekStart ? "bg-muted/40 font-medium" : ""
+                      }`}
+                      style={{ width: `${dayWidth}px` }}
+                      title={date.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short" })}
                     >
-                      {friday.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-                    </span>
-                  </div>
-                )
-              })}
+                      {date.toLocaleDateString("ru-RU", { day: "numeric" })}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
 
@@ -264,7 +304,13 @@ export function GanttChart() {
                   return (
                     <div key={task.id} className="flex items-center border-b h-12 hover:bg-muted/50">
                       <div className="w-[200px] px-4 text-sm truncate flex-shrink-0">{task.title}</div>
-                      <div className="flex-1 relative" style={{ height: "48px" }}>
+                      <div
+                        className="flex-1 relative"
+                        style={{
+                          height: "48px",
+                          backgroundImage: gridBackground,
+                        }}
+                      >
                         <div
                           className="absolute top-1/2 -translate-y-1/2 rounded cursor-move group"
                           style={{
@@ -274,6 +320,10 @@ export function GanttChart() {
                             backgroundColor: STATUS_COLORS[task.status],
                           }}
                           onMouseDown={(e) => handleMouseDown(task, "move", e)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onEditTask(task)
+                          }}
                         >
                           {/* Левый край для изменения размера */}
                           <div
@@ -282,6 +332,7 @@ export function GanttChart() {
                               e.stopPropagation()
                               handleMouseDown(task, "resize-left", e)
                             }}
+                            onClick={(e) => e.stopPropagation()}
                           />
 
                           {/* Текст задачи */}
@@ -294,6 +345,7 @@ export function GanttChart() {
                               e.stopPropagation()
                               handleMouseDown(task, "resize-right", e)
                             }}
+                            onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
