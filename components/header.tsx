@@ -61,7 +61,7 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
       <div className="container mx-auto px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button asChild>
+            <Button asChild className="bg-sky-200 text-sky-900 hover:bg-sky-300">
               <a href="https://risk.simpletracker.ru/" target="_blank" rel="noopener noreferrer">
                 Планирование ресурсов команды разработки
               </a>
@@ -106,14 +106,19 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge variant="secondary" className="px-4 py-2 select-none">
+            <span className="font-semibold">Всего задач:</span>
+            <span className="ml-2 font-bold">{tasks.length}</span>
+          </Badge>
+
           {statusOrder.map(({ status, label }) => {
             const isSelected = selectedStatuses.includes(status)
             return (
               <Badge
                 key={status}
                 asChild
-                variant={isSelected ? "secondary" : "default"}
+                variant={isSelected ? "default" : "secondary"}
                 className="px-4 py-2 cursor-pointer select-none"
               >
                 <button
@@ -128,6 +133,10 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
               </Badge>
             )
           })}
+
+          <span className="text-sm text-muted-foreground">
+            Нажмите статус, чтобы скрыть или показать задачи по выбранным статусам
+          </span>
         </div>
       </div>
     </header>
