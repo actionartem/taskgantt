@@ -215,7 +215,7 @@ export default function HomePage() {
               className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
               style={{ flexBasis: `${100 - leftWidth}%` }}
             >
-              <GanttChart />
+              <GanttChart onEditTask={handleEditTask} />
             </div>
           </div>
         </main>
