@@ -20,7 +20,15 @@ interface HeaderProps {
 }
 
 export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
-  const { tasks, theme, toggleTheme, groupBy, setGroupBy, hiddenStatuses, toggleHiddenStatus } = useApp()
+  const {
+    tasks,
+    theme,
+    toggleTheme,
+    groupBy,
+    setGroupBy,
+    selectedStatuses,
+    toggleSelectedStatus,
+  } = useApp()
 
   const statusOrder: { status: TaskStatus; label: string }[] = [
     { status: "не в работе", label: "Не в работе" },
@@ -100,19 +108,19 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
 
         <div className="flex flex-wrap gap-3">
           {statusOrder.map(({ status, label }) => {
-            const isHidden = hiddenStatuses.includes(status)
+            const isSelected = selectedStatuses.includes(status)
             return (
               <Badge
                 key={status}
                 asChild
-                variant={isHidden ? "default" : "secondary"}
+                variant={isSelected ? "secondary" : "default"}
                 className="px-4 py-2 cursor-pointer select-none"
               >
                 <button
                   type="button"
-                  onClick={() => toggleHiddenStatus(status)}
+                  onClick={() => toggleSelectedStatus(status)}
                   className="flex items-center gap-2"
-                  aria-pressed={isHidden}
+                  aria-pressed={isSelected}
                 >
                   <span>{label}:</span>
                   <span className="font-bold">{statusCounts[status]}</span>
