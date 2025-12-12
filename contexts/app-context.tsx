@@ -29,7 +29,7 @@ interface AppContextType {
   settings: AppSettings
   theme: "light" | "dark"
   groupBy: GroupBy
-  hiddenStatuses: TaskStatus[]
+  selectedStatuses: TaskStatus[]
   setTasks: (tasks: Task[]) => void
   addTask: (task: Task) => void
   updateTask: (id: number, updates: Partial<Task>) => void
@@ -37,7 +37,7 @@ interface AppContextType {
   setSettings: (settings: AppSettings) => void
   toggleTheme: () => void
   setGroupBy: (groupBy: GroupBy) => void
-  toggleHiddenStatus: (status: TaskStatus) => void
+  toggleSelectedStatus: (status: TaskStatus) => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -47,7 +47,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettingsState] = useState<AppSettings>({ executors: [], tags: [] })
   const [theme, setTheme] = useState<"light" | "dark">("light")
   const [groupBy, setGroupBy] = useState<GroupBy>("none")
-  const [hiddenStatuses, setHiddenStatuses] = useState<TaskStatus[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([])
   const [mounted, setMounted] = useState(false)
 
   // ---- утилита согласования старых/новых полей исполнителя
@@ -239,8 +239,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle("dark", next === "dark")
   }
 
-  const toggleHiddenStatus = useCallback((status: TaskStatus) => {
-    setHiddenStatuses((prev) =>
+  const toggleSelectedStatus = useCallback((status: TaskStatus) => {
+    setSelectedStatuses((prev) =>
       prev.includes(status) ? prev.filter((item) => item !== status) : [...prev, status],
     )
   }, [])
@@ -252,7 +252,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       settings,
       theme,
       groupBy,
-      hiddenStatuses,
+      selectedStatuses,
       setTasks,
       addTask,
       updateTask,
@@ -260,9 +260,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSettings,
       toggleTheme,
       setGroupBy,
-      toggleHiddenStatus,
+      toggleSelectedStatus,
     }),
-    [tasks, settings, theme, groupBy, hiddenStatuses, toggleHiddenStatus],
+    [tasks, settings, theme, groupBy, selectedStatuses, toggleSelectedStatus],
   )
 
   if (!mounted) return null

@@ -14,7 +14,7 @@ interface GanttChartProps {
 }
 
 export function GanttChart({ onEditTask }: GanttChartProps) {
-  const { tasks, updateTask, groupBy, hiddenStatuses } = useApp()
+  const { tasks, updateTask, groupBy, selectedStatuses } = useApp()
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
   const [dragType, setDragType] = useState<"move" | "resize-left" | "resize-right" | null>(null)
   const [dragStartX, setDragStartX] = useState(0)
@@ -24,12 +24,13 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
   const isSyncingScrollRef = useRef(false)
 
   // Фильтруем задачи с датами и не скрытые
+  const hasStatusFilter = selectedStatuses.length > 0
   const visibleTasks = tasks.filter(
     (task) =>
       task.startDate &&
       task.endDate &&
       !task.hiddenFromGantt &&
-      !hiddenStatuses.includes(task.status),
+      (!hasStatusFilter || selectedStatuses.includes(task.status)),
   )
 
   // Группируем задачи
