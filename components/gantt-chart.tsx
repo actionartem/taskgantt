@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useMemo, useState, useRef, useEffect } from "react"
+import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import type { Task } from "@/lib/types"
 import { STATUS_COLORS } from "@/lib/types"
@@ -22,6 +23,11 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
   const mainScrollRef = useRef<HTMLDivElement>(null)
   const topScrollRef = useRef<HTMLDivElement>(null)
   const isSyncingScrollRef = useRef(false)
+  const today = useMemo(() => {
+    const date = new Date()
+    date.setHours(0, 0, 0, 0)
+    return date
+  }, [])
 
   // Фильтруем задачи с датами и не скрытые
   const hasStatusFilter = selectedStatuses.length > 0
@@ -39,7 +45,6 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
   // Вычисляем диапазон дат
   const getDateRange = () => {
     if (visibleTasks.length === 0) {
-      const today = new Date()
       const nextMonth = new Date(today)
       nextMonth.setMonth(nextMonth.getMonth() + 1)
       return { minDate: today, maxDate: nextMonth }
@@ -48,6 +53,14 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
     const dates = visibleTasks.flatMap((task) => [new Date(task.startDate!), new Date(task.endDate!)])
     const minDate = new Date(Math.min(...dates.map((d) => d.getTime())))
     const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())))
+
+    if (today < minDate) {
+      minDate.setTime(today.getTime())
+    }
+
+    if (today > maxDate) {
+      maxDate.setTime(today.getTime())
+    }
 
     // Добавляем отступы
     minDate.setDate(minDate.getDate() - 7)
@@ -82,6 +95,21 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
 
   const formatDate = (date: Date) => {
     return date.toISOString().split("T")[0]
+  }
+
+  const handleScrollToToday = () => {
+    const mainScroll = mainScrollRef.current
+    const topScroll = topScrollRef.current
+
+    if (!mainScroll || !topScroll) {
+      return
+    }
+
+    const todayPosition = getPositionFromDate(today) + 200
+    const targetScrollLeft = Math.max(0, todayPosition - mainScroll.clientWidth / 2)
+
+    mainScroll.scrollLeft = targetScrollLeft
+    topScroll.scrollLeft = targetScrollLeft
   }
 
   const handleMouseDown = (task: Task, type: "move" | "resize-left" | "resize-right", e: React.MouseEvent) => {
@@ -222,8 +250,11 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
 
   return (
     <Card className="flex flex-col h-full overflow-hidden">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold">Диаграмма Ганта</h2>
+        <Button variant="outline" size="sm" onClick={handleScrollToToday}>
+          Сегодня
+        </Button>
       </div>
 
       <div className="border-b">
@@ -233,7 +264,11 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
       </div>
 
       <div className="flex-1 overflow-auto" ref={mainScrollRef}>
-        <div className="min-w-max">
+        <div className="relative min-w-max">
+          <div
+            className="absolute top-0 bottom-0 w-px bg-red-500/90 pointer-events-none z-20"
+            style={{ left: `${getPositionFromDate(today) + 200}px` }}
+          />
           {/* Временная шкала */}
           <div className="sticky top-0 z-10 bg-card border-b">
             <div className="flex flex-col" style={{ paddingLeft: "200px" }}>
