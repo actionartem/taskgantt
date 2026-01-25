@@ -187,21 +187,6 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
     }
   }, [draggedTask, dragType, dragStartX, dragStartDate, dayWidth, updateTask])
 
-  // Генерация временной шкалы
-  const timeline = useMemo(() => {
-    const timelineWeeks = []
-    const currentDate = new Date(minDate)
-    const dayOfWeek = currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1 // понедельник = 0
-    currentDate.setDate(currentDate.getDate() - dayOfWeek)
-
-    while (currentDate <= maxDate) {
-      timelineWeeks.push(new Date(currentDate))
-      currentDate.setDate(currentDate.getDate() + 7)
-    }
-
-    return timelineWeeks
-  }, [maxDate, minDate])
-
   const timelineDays = useMemo(() => {
     return Array.from({ length: totalDays + 1 }, (_, index) => {
       const date = new Date(minDate)
@@ -209,6 +194,34 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
       return date
     })
   }, [minDate, totalDays])
+
+  const holidays = useMemo(() => {
+    const fixedHolidays = [
+      "1-1",
+      "1-2",
+      "1-3",
+      "1-4",
+      "1-5",
+      "1-6",
+      "1-7",
+      "1-8",
+      "2-23",
+      "3-8",
+      "5-1",
+      "5-9",
+      "6-12",
+      "11-4",
+    ]
+
+    return new Set(fixedHolidays)
+  }, [])
+
+  const isNonWorkingDay = (date: Date) => {
+    const day = date.getDay()
+    const isWeekend = day === 0 || day === 6
+    const key = `${date.getMonth() + 1}-${date.getDate()}`
+    return isWeekend || holidays.has(key)
+  }
 
   useEffect(() => {
     const topScroll = topScrollRef.current
@@ -288,52 +301,21 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
           {/* Временная шкала */}
           <div className="sticky top-0 z-10 bg-card border-b">
             <div className="flex flex-col" style={{ paddingLeft: "200px" }}>
-              <div className="flex h-12 items-center border-b">
-                {timeline.map((date, index) => {
-                  const friday = new Date(date)
-                  friday.setDate(friday.getDate() + 4)
-
-                  return (
-                    <div
-                      key={index}
-                      className="relative h-full border-l last:border-r"
-                      style={{ width: `${dayWidth * 7}px` }}
-                    >
-                      <span
-                        className="absolute text-xs text-muted-foreground whitespace-nowrap pointer-events-none"
-                        style={{ top: "50%", left: 8, transform: "translateY(-50%)" }}
-                      >
-                        {date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-                      </span>
-                      <span
-                        className="absolute text-xs text-muted-foreground whitespace-nowrap pointer-events-none"
-                        style={{
-                          top: "50%",
-                          left: `${dayWidth * 3.5}px`,
-                          transform: "translate(-50%, -50%)",
-                        }}
-                      >
-                        {friday.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="flex h-8 text-[11px] text-muted-foreground">
+              <div className="flex h-10 text-[11px] text-muted-foreground">
                 {timelineDays.map((date, index) => {
                   const isWeekStart = date.getDay() === 1
+                  const isHoliday = isNonWorkingDay(date)
 
                   return (
                     <div
                       key={index}
                       className={`flex items-center justify-center border-l first:border-l-0 ${
-                        isWeekStart ? "bg-muted/40 font-medium" : ""
-                      }`}
+                        isWeekStart ? "font-medium" : ""
+                      } ${isHoliday ? "bg-red-500/10" : ""}`}
                       style={{ width: `${dayWidth}px` }}
                       title={date.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short" })}
                     >
-                      {date.toLocaleDateString("ru-RU", { day: "numeric" })}
+                      {date.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
                     </div>
                   )
                 })}
@@ -363,8 +345,17 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
                           backgroundImage: gridBackground,
                         }}
                       >
+                        <div className="absolute inset-0 flex pointer-events-none">
+                          {timelineDays.map((date, index) => (
+                            <div
+                              key={`${task.id}-day-${index}`}
+                              className={isNonWorkingDay(date) ? "bg-red-500/10" : ""}
+                              style={{ width: `${dayWidth}px` }}
+                            />
+                          ))}
+                        </div>
                         <div
-                          className="absolute top-1/2 -translate-y-1/2 rounded cursor-move group"
+                          className="absolute top-1/2 -translate-y-1/2 rounded cursor-move group z-10"
                           style={{
                             left: `${startPos}px`,
                             width: `${width}px`,
