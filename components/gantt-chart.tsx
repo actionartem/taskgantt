@@ -333,7 +333,7 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
                 {groupTasks.map((task, taskIndex) => {
                   const startPos = getPositionFromDate(new Date(task.startDate!))
                   const endPos = getPositionFromDate(new Date(task.endDate!))
-                  const width = endPos - startPos
+                  const width = endPos - startPos + dayWidth
 
                   return (
                     <div key={task.id} className="flex items-center border-b h-12 hover:bg-muted/50">
