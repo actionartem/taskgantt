@@ -23,6 +23,7 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
   const mainScrollRef = useRef<HTMLDivElement>(null)
   const topScrollRef = useRef<HTMLDivElement>(null)
   const isSyncingScrollRef = useRef(false)
+  const didAutoScrollRef = useRef(false)
   const today = useMemo(() => {
     const date = new Date()
     date.setHours(0, 0, 0, 0)
@@ -111,6 +112,21 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
     mainScroll.scrollLeft = targetScrollLeft
     topScroll.scrollLeft = targetScrollLeft
   }
+
+  useEffect(() => {
+    if (didAutoScrollRef.current) {
+      return
+    }
+
+    if (!mainScrollRef.current || !topScrollRef.current) {
+      return
+    }
+
+    didAutoScrollRef.current = true
+    requestAnimationFrame(() => {
+      handleScrollToToday()
+    })
+  }, [maxDate, minDate, visibleTasks.length])
 
   const handleMouseDown = (task: Task, type: "move" | "resize-left" | "resize-right", e: React.MouseEvent) => {
     e.preventDefault()
