@@ -20,6 +20,8 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
   const [dragType, setDragType] = useState<"move" | "resize-left" | "resize-right" | null>(null)
   const [dragStartX, setDragStartX] = useState(0)
   const [dragStartDate, setDragStartDate] = useState<Date | null>(null)
+  const [dragStartEndDate, setDragStartEndDate] = useState<Date | null>(null)
+  const lastDragDeltaRef = useRef(0)
   const mainScrollRef = useRef<HTMLDivElement>(null)
   const topScrollRef = useRef<HTMLDivElement>(null)
   const isSyncingScrollRef = useRef(false)
@@ -134,19 +136,21 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
     setDragType(type)
     setDragStartX(e.clientX)
     setDragStartDate(new Date(task.startDate!))
+    setDragStartEndDate(new Date(task.endDate!))
+    lastDragDeltaRef.current = 0
   }
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!draggedTask || !dragType || !dragStartDate) return
+      if (!draggedTask || !dragType || !dragStartDate || !dragStartEndDate) return
 
       const deltaX = e.clientX - dragStartX
       const deltaDays = Math.round(deltaX / dayWidth)
 
-      if (deltaDays === 0) return
+      if (deltaDays === lastDragDeltaRef.current) return
 
-      const startDate = new Date(draggedTask.startDate!)
-      const endDate = new Date(draggedTask.endDate!)
+      const startDate = new Date(dragStartDate)
+      const endDate = new Date(dragStartEndDate)
 
       if (dragType === "move") {
         startDate.setDate(startDate.getDate() + deltaDays)
@@ -167,7 +171,7 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
         }
       }
 
-      setDragStartX(e.clientX)
+      lastDragDeltaRef.current = deltaDays
     }
 
     const handleMouseUp = () => {
@@ -175,6 +179,8 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
       setDragType(null)
       setDragStartX(0)
       setDragStartDate(null)
+      setDragStartEndDate(null)
+      lastDragDeltaRef.current = 0
     }
 
     if (draggedTask) {
@@ -185,7 +191,7 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
         document.removeEventListener("mouseup", handleMouseUp)
       }
     }
-  }, [draggedTask, dragType, dragStartX, dragStartDate, dayWidth, updateTask])
+  }, [draggedTask, dragType, dragStartX, dragStartDate, dragStartEndDate, dayWidth, updateTask])
 
   const timelineDays = useMemo(() => {
     return Array.from({ length: totalDays + 1 }, (_, index) => {
