@@ -89,7 +89,7 @@ export function TaskHistorySection() {
   const [search, setSearch] = useState("")
   const [sortKey, setSortKey] = useState<SortKey>("id")
   const [sortAsc, setSortAsc] = useState(true)
-  const [visibleCount, setVisibleCount] = useState(8)
+  const [visibleCount, setVisibleCount] = useState(10)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   const filteredTasks = useMemo(() => {
@@ -197,7 +197,7 @@ export function TaskHistorySection() {
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-2">
         <div className="flex min-h-0 flex-col border-r">
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1" type="always">
             <div className="divide-y">
               {visibleTasks.map((task) => (
                 <button
@@ -244,11 +244,11 @@ export function TaskHistorySection() {
               Показано {visibleTasks.length} из {sortedTasks.length}
             </span>
             {hasMore ? (
-              <Button variant="outline" size="sm" onClick={() => setVisibleCount((prev) => prev + 8)}>
+              <Button variant="outline" size="sm" onClick={() => setVisibleCount((prev) => prev + 10)}>
                 Показать еще
               </Button>
-            ) : sortedTasks.length > 8 ? (
-              <Button variant="ghost" size="sm" onClick={() => setVisibleCount(8)}>
+            ) : sortedTasks.length > 10 ? (
+              <Button variant="ghost" size="sm" onClick={() => setVisibleCount(10)}>
                 Свернуть
               </Button>
             ) : null}
