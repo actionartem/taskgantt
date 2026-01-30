@@ -18,14 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-
 type SortKey = "id" | "status" | "priority" | "startDate" | "endDate" | "assignee"
 
 const SORT_LABELS: Record<SortKey, string> = {
@@ -162,122 +154,125 @@ export function TaskHistorySection() {
   const selectedTimeline = selectedTask ? buildTimeline(selectedTask) : []
 
   return (
-    <>
-      <Card className="flex h-full min-h-[240px] flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b p-4">
-          <div>
-            <h2 className="text-lg font-semibold">Все задачи и история</h2>
-            <p className="text-sm text-muted-foreground">
-              Быстрый обзор, сортировка и история изменений статусов.
-            </p>
+    <Card className="flex h-full min-h-[240px] flex-col overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b p-4">
+        <div>
+          <h2 className="text-lg font-semibold">Все задачи и история</h2>
+          <p className="text-sm text-muted-foreground">
+            Быстрый обзор, сортировка и история изменений статусов.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Поиск по названию или ID"
+              className="pl-9 w-56"
+            />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Поиск по названию или ID"
-                className="pl-9 w-56"
-              />
+          <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Сортировка" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SORT_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSortAsc((prev) => !prev)}
+            title={sortAsc ? "Сортировка по возрастанию" : "Сортировка по убыванию"}
+          >
+            {sortAsc ? <ArrowUpAZ className="h-4 w-4" /> : <ArrowDownAZ className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-2">
+        <div className="flex min-h-0 flex-col border-r">
+          <ScrollArea className="flex-1">
+            <div className="divide-y">
+              {visibleTasks.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => setSelectedTask(task)}
+                  className="flex w-full items-center gap-4 px-4 py-3 text-left transition hover:bg-muted/60"
+                >
+                  <div className="w-16 text-sm font-mono text-muted-foreground">#{task.id}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{task.title}</span>
+                      <Badge
+                        style={{ backgroundColor: STATUS_COLORS[task.status], color: "white" }}
+                        className="text-[11px]"
+                      >
+                        {task.status}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {task.assigneeName ||
+                        settings.executors.find((e) => String(e.id) === String(task.assigneeId))
+                          ?.name ||
+                        "Без исполнителя"}
+                      {" · "}
+                      {task.priority}
+                      {" · "}
+                      старт {task.startDate || "—"}
+                      {" · "}
+                      финиш {task.endDate || "—"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <History className="h-4 w-4" />
+                    {task.statusLog?.length || 0}
+                  </div>
+                </button>
+              ))}
             </div>
-            <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Сортировка" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(SORT_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setSortAsc((prev) => !prev)}
-              title={sortAsc ? "Сортировка по возрастанию" : "Сортировка по убыванию"}
-            >
-              {sortAsc ? <ArrowUpAZ className="h-4 w-4" /> : <ArrowDownAZ className="h-4 w-4" />}
-            </Button>
+          </ScrollArea>
+
+          <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-muted-foreground">
+            <span>
+              Показано {visibleTasks.length} из {sortedTasks.length}
+            </span>
+            {hasMore ? (
+              <Button variant="outline" size="sm" onClick={() => setVisibleCount((prev) => prev + 8)}>
+                Показать еще
+              </Button>
+            ) : sortedTasks.length > 8 ? (
+              <Button variant="ghost" size="sm" onClick={() => setVisibleCount(8)}>
+                Свернуть
+              </Button>
+            ) : null}
           </div>
         </div>
 
-        <ScrollArea className="flex-1">
-          <div className="divide-y">
-            {visibleTasks.map((task) => (
-              <button
-                key={task.id}
-                type="button"
-                onClick={() => setSelectedTask(task)}
-                className="flex w-full items-center gap-4 px-4 py-3 text-left transition hover:bg-muted/60"
-              >
-                <div className="w-16 text-sm font-mono text-muted-foreground">#{task.id}</div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{task.title}</span>
-                    <Badge
-                      style={{ backgroundColor: STATUS_COLORS[task.status], color: "white" }}
-                      className="text-[11px]"
-                    >
-                      {task.status}
-                    </Badge>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {task.assigneeName ||
-                      settings.executors.find((e) => String(e.id) === String(task.assigneeId))
+        <div className="flex min-h-0 flex-col">
+          <div className="border-b p-4">
+            <h3 className="text-sm font-semibold text-muted-foreground">История статусов</h3>
+          </div>
+          <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-6">
+            {selectedTask ? (
+              <>
+                <div>
+                  <div className="text-lg font-semibold">{selectedTask.title}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Задача #{selectedTask.id} · {selectedTask.priority} ·{" "}
+                    {selectedTask.assigneeName ||
+                      settings.executors.find((e) => String(e.id) === String(selectedTask.assigneeId))
                         ?.name ||
                       "Без исполнителя"}
-                    {" · "}
-                    {task.priority}
-                    {" · "}
-                    старт {task.startDate || "—"}
-                    {" · "}
-                    финиш {task.endDate || "—"}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <History className="h-4 w-4" />
-                  {task.statusLog?.length || 0}
-                </div>
-              </button>
-            ))}
-          </div>
-        </ScrollArea>
 
-        <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-muted-foreground">
-          <span>
-            Показано {visibleTasks.length} из {sortedTasks.length}
-          </span>
-          {hasMore ? (
-            <Button variant="outline" size="sm" onClick={() => setVisibleCount((prev) => prev + 8)}>
-              Показать еще
-            </Button>
-          ) : sortedTasks.length > 8 ? (
-            <Button variant="ghost" size="sm" onClick={() => setVisibleCount(8)}>
-              Свернуть
-            </Button>
-          ) : null}
-        </div>
-      </Card>
-
-      <Sheet open={!!selectedTask} onOpenChange={(open) => !open && setSelectedTask(null)}>
-        <SheetContent side="right" className="w-[480px] sm:max-w-md">
-          {selectedTask && (
-            <div className="flex h-full flex-col">
-              <SheetHeader>
-                <SheetTitle className="text-xl">{selectedTask.title}</SheetTitle>
-                <SheetDescription>
-                  Задача #{selectedTask.id} · {selectedTask.priority} ·{" "}
-                  {selectedTask.assigneeName ||
-                    settings.executors.find((e) => String(e.id) === String(selectedTask.assigneeId))
-                      ?.name ||
-                    "Без исполнителя"}
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-6">
                 <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
                   Здесь собрана история смены статусов. Мы показываем продолжительность
                   каждого статуса, чтобы понять, где задача задерживается.
@@ -314,11 +309,15 @@ export function TaskHistorySection() {
                     ))}
                   </div>
                 )}
+              </>
+            ) : (
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                Выберите задачу слева, чтобы увидеть историю статусов.
               </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-    </>
+            )}
+          </div>
+        </div>
+      </div>
+    </Card>
   )
 }
