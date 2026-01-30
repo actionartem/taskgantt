@@ -13,6 +13,7 @@ import {
 
 import type { Task, AppSettings, GroupBy, TaskStatus } from "@/lib/types"
 import { storage } from "@/lib/storage"
+import { addStatusChange } from "@/lib/task-utils"
 
 // Используем только существующие экспорты из lib/api.ts
 import {
@@ -100,6 +101,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       acc[t.id] = !!t.hiddenFromGantt
       return acc
     }, {})
+    const localStatusLogMap = storage.getTasks().reduce<Record<number, Task["statusLog"]>>(
+      (acc, t) => {
+        acc[t.id] = Array.isArray(t.statusLog) ? t.statusLog : []
+        return acc
+      },
+      {},
+    )
 
     const mergedTasks: Task[] = apiTasks.map((t: any) => ({
       ...t,
@@ -108,6 +116,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         (t.hidden_from_gantt != null ? Boolean(t.hidden_from_gantt) : undefined) ??
         localHiddenMap[t.id] ??
         false,
+      statusLog: Array.isArray(t.statusLog) ? t.statusLog : localStatusLogMap[t.id] ?? [],
     }))
 
     setSettingsState((prev) => {
@@ -142,8 +151,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const addTask = (task: Task) => {
     // оптимистично
+    const initialStatusLog =
+      Array.isArray(task.statusLog) && task.statusLog.length > 0
+        ? task.statusLog
+        : [
+            {
+              datetime: new Date().toISOString(),
+              oldStatus: task.status,
+              newStatus: task.status,
+              user: "Создание задачи",
+            },
+          ]
+    const nextTask: Task = { ...task, statusLog: initialStatusLog }
     setTasksState((prev) => {
-      const next = [...prev, task]
+      const next = [...prev, nextTask]
       storage.saveTasks(next)
       return next
     })
@@ -173,7 +194,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateTask = (id: number, updates: Partial<Task>) => {
     // Оптимистично кладём в локальный стейт/LS
     setTasksState((prev) => {
-      const next = prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      const next = prev.map((t) => {
+        if (t.id !== id) return t
+        if (updates.status && updates.status !== t.status) {
+          const updatedLog = addStatusChange(
+            { ...t, statusLog: Array.isArray(t.statusLog) ? t.statusLog : [] },
+            updates.status,
+          )
+          return { ...t, ...updates, statusLog: updatedLog }
+        }
+        return { ...t, ...updates }
+      })
       storage.saveTasks(next)
       return next
     })

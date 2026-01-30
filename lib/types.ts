@@ -27,6 +27,7 @@ export interface Task {
   link?: string | null;      // ссылка на задачу (UI-поле "Ссылка на задачу")
   description: string | null;
   status: TaskStatus;
+  statusLog: StatusChangeLog[];
   startDate?: string | null; // YYYY-MM-DD (UI)
   endDate?: string | null;   // YYYY-MM-DD (UI)
   assigneeId?: number | null;
@@ -34,6 +35,13 @@ export interface Task {
   priority: TaskPriority;
   tags: string[];            // пока строки в UI (названия тегов)
   hiddenFromGantt?: boolean;
+}
+
+export interface StatusChangeLog {
+  datetime: string;
+  oldStatus: TaskStatus;
+  newStatus: TaskStatus;
+  user?: string | null;
 }
 
 export interface AppSettings {

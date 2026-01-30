@@ -10,6 +10,7 @@ import { GanttChart } from "@/components/gantt-chart"
 import { Settings } from "@/components/settings"
 import { AuthModal } from "@/components/auth-modal"
 import { ProfileModal } from "@/components/profile-modal"
+import { TaskHistorySection } from "@/components/task-history-section"
 import type { Task } from "@/lib/types"
 import { loginPassword, registerPassword } from "@/lib/api"
 
@@ -197,25 +198,30 @@ export default function HomePage() {
         ) : null}
 
         <main className="flex-1 overflow-hidden">
-          <div ref={containerRef} className="flex h-full items-stretch p-4">
-            <div
-              className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
-              style={{ flexBasis: `${leftWidth}%` }}
-            >
-              <TaskList onCreateTask={handleCreateTask} onEditTask={handleEditTask} />
+          <div className="flex h-full flex-col gap-4 p-4">
+            <div ref={containerRef} className="flex min-h-[280px] flex-1 items-stretch">
+              <div
+                className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
+                style={{ flexBasis: `${leftWidth}%` }}
+              >
+                <TaskList onCreateTask={handleCreateTask} onEditTask={handleEditTask} />
+              </div>
+              <div
+                className="mx-4 flex w-1 cursor-col-resize items-stretch"
+                onMouseDown={startResizing}
+                onTouchStart={startResizing}
+              >
+                <div className="h-full w-full rounded bg-neutral-200 transition-colors hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600" />
+              </div>
+              <div
+                className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
+                style={{ flexBasis: `${100 - leftWidth}%` }}
+              >
+                <GanttChart onEditTask={handleEditTask} />
+              </div>
             </div>
-            <div
-              className="mx-4 flex w-1 cursor-col-resize items-stretch"
-              onMouseDown={startResizing}
-              onTouchStart={startResizing}
-            >
-              <div className="h-full w-full rounded bg-neutral-200 transition-colors hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600" />
-            </div>
-            <div
-              className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
-              style={{ flexBasis: `${100 - leftWidth}%` }}
-            >
-              <GanttChart onEditTask={handleEditTask} />
+            <div className="h-[32vh] min-h-[240px]">
+              <TaskHistorySection />
             </div>
           </div>
         </main>
