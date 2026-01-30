@@ -225,6 +225,9 @@ export default function HomePage() {
             </div>
           </div>
         </main>
+        <footer className="px-4 pb-6">
+          <div className="h-8 rounded-full bg-gradient-to-r from-neutral-200 via-neutral-100 to-neutral-200 shadow-inner dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800" />
+        </footer>
 
         <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />
         <Settings open={showSettings} onClose={() => setShowSettings(false)} />

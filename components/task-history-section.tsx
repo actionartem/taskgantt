@@ -197,7 +197,7 @@ export function TaskHistorySection() {
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-2">
         <div className="flex min-h-0 flex-col border-r">
-          <ScrollArea className="flex-1" type="always">
+          <ScrollArea className="flex-1 min-h-0" type="always">
             <div className="divide-y">
               {visibleTasks.map((task) => (
                 <button
@@ -259,63 +259,65 @@ export function TaskHistorySection() {
           <div className="border-b p-4">
             <h3 className="text-sm font-semibold text-muted-foreground">История статусов</h3>
           </div>
-          <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-6">
-            {selectedTask ? (
-              <>
-                <div>
-                  <div className="text-lg font-semibold">{selectedTask.title}</div>
-                  <div className="text-sm text-muted-foreground">
-                    Задача #{selectedTask.id} · {selectedTask.priority} ·{" "}
-                    {selectedTask.assigneeName ||
-                      settings.executors.find((e) => String(e.id) === String(selectedTask.assigneeId))
-                        ?.name ||
-                      "Без исполнителя"}
+          <ScrollArea className="flex-1 min-h-0" type="always">
+            <div className="flex flex-1 flex-col gap-4 px-4 py-6">
+              {selectedTask ? (
+                <>
+                  <div>
+                    <div className="text-lg font-semibold">{selectedTask.title}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Задача #{selectedTask.id} · {selectedTask.priority} ·{" "}
+                      {selectedTask.assigneeName ||
+                        settings.executors.find((e) => String(e.id) === String(selectedTask.assigneeId))
+                          ?.name ||
+                        "Без исполнителя"}
+                    </div>
                   </div>
-                </div>
 
-                <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
-                  Здесь собрана история смены статусов. Мы показываем продолжительность
-                  каждого статуса, чтобы понять, где задача задерживается.
-                </div>
-
-                {selectedTimeline.length === 0 ? (
-                  <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                    История пока пустая. Первые записи появятся после изменения статуса.
+                  <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+                    Здесь собрана история смены статусов. Мы показываем продолжительность
+                    каждого статуса, чтобы понять, где задача задерживается.
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {selectedTimeline.map((item, index) => (
-                      <div key={`${item.start}-${index}`} className="rounded-lg border p-4">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: STATUS_COLORS[item.status] }}
-                          />
-                          <div className="flex-1">
-                            <div className="text-sm font-medium">{item.status}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {formatDateTime(item.start)} →{" "}
-                              {item.end ? formatDateTime(item.end) : "сейчас"}
+
+                  {selectedTimeline.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                      История пока пустая. Первые записи появятся после изменения статуса.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {selectedTimeline.map((item, index) => (
+                        <div key={`${item.start}-${index}`} className="rounded-lg border p-4">
+                          <div className="flex items-center gap-3">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: STATUS_COLORS[item.status] }}
+                            />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium">{item.status}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatDateTime(item.start)} →{" "}
+                                {item.end ? formatDateTime(item.end) : "сейчас"}
+                              </div>
                             </div>
+                            <Badge variant="secondary" className="text-xs">
+                              {formatDuration(item.start, item.end)}
+                            </Badge>
                           </div>
-                          <Badge variant="secondary" className="text-xs">
-                            {formatDuration(item.start, item.end)}
-                          </Badge>
+                          <div className="mt-3 text-xs text-muted-foreground">
+                            Переход: {item.from} → {item.to}
+                          </div>
                         </div>
-                        <div className="mt-3 text-xs text-muted-foreground">
-                          Переход: {item.from} → {item.to}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                Выберите задачу слева, чтобы увидеть историю статусов.
-              </div>
-            )}
-          </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  Выберите задачу слева, чтобы увидеть историю статусов.
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </div>
       </div>
     </Card>
