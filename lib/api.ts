@@ -90,6 +90,7 @@ function fromApiTask(t: ApiTask): Task {
     priority: t.priority ? PRIORITY_API_TO_RU[t.priority] : "средний",
     assigneeId: t.assignee_user_id ? Number(t.assignee_user_id) : null,
     assigneeName: t.assignee_name ?? null,
+    statusLog: Array.isArray((t as any).statusLog) ? (t as any).statusLog : [],
     startDate: ymdFromIso(t.start_at),
     endDate: ymdFromIso(t.due_at),
     link: t.link_url ?? null,
@@ -408,4 +409,3 @@ export async function detachTagFromTask(taskId: number | string, tagId: number |
 export async function getBoards(_userId?: number | string) {
   return Promise.resolve([{ id: 1, title: "Общие задачи", created_at: "" }])
 }
-

@@ -19,7 +19,11 @@ export const storage = {
   getTasks: (): Task[] => {
     if (typeof window === "undefined") return []
     const parsed = safeParse<Task[]>(localStorage.getItem(TASKS_KEY), [])
-    return Array.isArray(parsed) ? parsed : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((task) => ({
+      ...task,
+      statusLog: Array.isArray(task.statusLog) ? task.statusLog : [],
+    }))
   },
 
   saveTasks: (tasks: Task[]): void => {
