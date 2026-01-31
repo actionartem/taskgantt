@@ -220,7 +220,7 @@ export default function HomePage() {
                 <GanttChart onEditTask={handleEditTask} />
               </div>
             </div>
-            <div className="h-[45vh] min-h-[360px]">
+            <div className="h-[65vh] min-h-[600px]">
               <TaskHistorySection />
             </div>
           </div>
