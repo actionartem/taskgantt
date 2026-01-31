@@ -249,21 +249,83 @@ export function TaskHistorySection() {
     [historyEntries],
   )
 
-  const statusSegments = selectedTimeline.map((segment, index) => {
-    const durationMs = getDurationMs(segment.start, segment.end)
-    const percent = totalStatusMs ? Math.max(3, (durationMs / totalStatusMs) * 100) : 0
-    return {
-      id: `status-${index}-${segment.start}`,
-      label: normalizeStatusLabel(segment.to),
-      start: segment.start,
-      end: segment.end,
-      durationMs,
-      percent,
-      color: getStatusColor(segment.to),
-      from: segment.from,
-      to: segment.to,
-    }
-  })
+  const statusSegments = useMemo(() => {
+    return selectedTimeline.map((segment, index) => {
+      const durationMs = getDurationMs(segment.start, segment.end)
+      const percent = totalStatusMs ? Math.max(3, (durationMs / totalStatusMs) * 100) : 0
+      return {
+        id: `status-${index}-${segment.start}`,
+        label: normalizeStatusLabel(segment.to),
+        start: segment.start,
+        end: segment.end,
+        durationMs,
+        percent,
+        color: getStatusColor(segment.to),
+        from: segment.from,
+        to: segment.to,
+      }
+    })
+  }, [selectedTimeline, totalStatusMs])
+
+  const dueDateChangesChron = useMemo(
+    () => dateChangesChron.filter((entry) => entry.field_name === "due_at"),
+    [dateChangesChron],
+  )
+
+  const dueMarkersBySegment = useMemo(() => {
+    const markers = new Map<
+      string,
+      {
+        id: string
+        offsetPercent: number
+        changed_at: string
+        old_value: string | null
+        new_value: string | null
+      }[]
+    >()
+
+    statusSegments.forEach((segment) => {
+      markers.set(segment.id, [])
+    })
+
+    dueDateChangesChron.forEach((entry) => {
+      const changeMs = new Date(entry.changed_at).getTime()
+      if (!Number.isFinite(changeMs)) return
+
+      statusSegments.forEach((segment) => {
+        const startMs = new Date(segment.start).getTime()
+        const endMs = new Date(segment.end ?? new Date().toISOString()).getTime()
+        const isLastSegment = !segment.end
+        if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return
+        if (changeMs < startMs) return
+        if (isLastSegment) {
+          if (changeMs > endMs) return
+        } else if (changeMs >= endMs) {
+          return
+        }
+
+        const durationMs = Math.max(1, endMs - startMs)
+        const offsetPercent = Math.min(98, Math.max(2, ((changeMs - startMs) / durationMs) * 100))
+        const segmentMarkers = markers.get(segment.id)
+        if (!segmentMarkers) return
+
+        segmentMarkers.push({
+          id: `${segment.id}-${entry.changed_at}-${entry.old_value ?? "none"}`,
+          offsetPercent,
+          changed_at: entry.changed_at,
+          old_value: entry.old_value,
+          new_value: entry.new_value,
+        })
+      })
+    })
+
+    return markers
+  }, [dueDateChangesChron, statusSegments])
+
+  const hasDueMarkers = useMemo(
+    () => Array.from(dueMarkersBySegment.values()).some((segment) => segment.length > 0),
+    [dueMarkersBySegment],
+  )
 
   useEffect(() => {
     if (!selectedTask) {
@@ -627,16 +689,36 @@ export function TaskHistorySection() {
                         ) : (
                           <>
                             <div className="mt-4 flex h-10 w-full overflow-hidden rounded-full border bg-muted/30">
-                              {statusSegments.map((segment) => (
-                                <button
-                                  key={segment.id}
-                                  type="button"
-                                  className="h-full transition hover:opacity-90"
-                                  style={{ width: `${segment.percent}%`, backgroundColor: segment.color }}
-                                  title={`${segment.label} • ${formatDurationMs(segment.durationMs)}`}
-                                />
-                              ))}
+                              {statusSegments.map((segment) => {
+                                const markers = dueMarkersBySegment.get(segment.id) ?? []
+                                return (
+                                  <button
+                                    key={segment.id}
+                                    type="button"
+                                    className="relative h-full transition hover:opacity-90"
+                                    style={{ width: `${segment.percent}%`, backgroundColor: segment.color }}
+                                    title={`${segment.label} • ${formatDurationMs(segment.durationMs)}`}
+                                  >
+                                    {markers.map((marker) => (
+                                      <span
+                                        key={marker.id}
+                                        className="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-slate-900/70 shadow-sm"
+                                        style={{ left: `${marker.offsetPercent}%` }}
+                                        title={`Дата окончания продлилась с ${formatDate(
+                                          marker.old_value,
+                                        )} до ${formatDate(marker.new_value)}`}
+                                      />
+                                    ))}
+                                  </button>
+                                )
+                              })}
                             </div>
+                            {hasDueMarkers ? (
+                              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="inline-flex h-4 w-0.5 rounded-full bg-slate-900/70" />
+                                Сдвиг финиша внутри статуса
+                              </div>
+                            ) : null}
                             <div className="mt-4 grid gap-2 sm:grid-cols-2">
                               {statusSegments.map((segment) => (
                                 <button
