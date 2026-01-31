@@ -28,7 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 type SortKey = "id" | "status" | "priority" | "startDate" | "endDate" | "assignee"
 
@@ -155,7 +154,6 @@ export function TaskHistorySection() {
   )
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
-  const [showInitialPlan, setShowInitialPlan] = useState(true)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
 
   const filteredTasks = useMemo(() => {
@@ -268,8 +266,6 @@ export function TaskHistorySection() {
     [dateChangesChron],
   )
 
-  const initialStart =
-    startChanges[0]?.old_value ?? startChanges[0]?.new_value ?? selectedTask?.startDate ?? null
   const initialFinish =
     finishChanges[0]?.old_value ?? finishChanges[0]?.new_value ?? selectedTask?.endDate ?? null
   const finishShiftMs =
@@ -625,7 +621,7 @@ export function TaskHistorySection() {
       </div>
 
       <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
-        <DialogContent className="max-w-5xl w-[min(95vw,76rem)] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[96vw] w-[min(96vw,1200px)] h-[92vh] max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-semibold">
               Визуализация истории задачи
@@ -641,15 +637,6 @@ export function TaskHistorySection() {
                 <div>
                   <div className="text-sm text-muted-foreground">Задача #{selectedTask.id}</div>
                   <div className="text-lg font-semibold">{selectedTask.title}</div>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <span>Сравнение планов</span>
-                  <Switch
-                    checked={showInitialPlan}
-                    onCheckedChange={setShowInitialPlan}
-                    aria-label="Показывать первоначальный план"
-                  />
-                  <span>{showInitialPlan ? "первоначальный" : "текущий"}</span>
                 </div>
               </div>
 
@@ -781,23 +768,6 @@ export function TaskHistorySection() {
                                 })}
                               </div>
                             </div>
-                            {showInitialPlan && (
-                              <div className="mt-4 grid gap-3 rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground sm:grid-cols-2">
-                                <div>
-                                  <div className="uppercase">Первый план</div>
-                                  <div className="mt-1 text-sm font-medium text-foreground">
-                                    {initialStart ? formatDate(initialStart) : "—"} →{" "}
-                                    {initialFinish ? formatDate(initialFinish) : "—"}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="uppercase">Текущий план</div>
-                                  <div className="mt-1 text-sm font-medium text-foreground">
-                                    {selectedTask.startDate || "—"} → {selectedTask.endDate || "—"}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
                           </div>
                         )}
                       </div>
