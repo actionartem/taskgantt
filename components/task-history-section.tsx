@@ -147,7 +147,6 @@ export function TaskHistorySection() {
   )
   const [historyError, setHistoryError] = useState<string | null>(null)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -266,30 +265,6 @@ export function TaskHistorySection() {
     }
   })
 
-  const analyticsEvents = useMemo(() => {
-    const statusEvents = statusSegments.map((segment) => ({
-      id: segment.id,
-      type: "status" as const,
-      date: segment.start,
-      title: `Статус: ${segment.label}`,
-      subtitle: `${formatDateTime(segment.start)} → ${segment.end ? formatDateTime(segment.end) : "сейчас"}`,
-      detail: `Переход: ${normalizeStatusLabel(segment.from)} → ${normalizeStatusLabel(segment.to)}`,
-      duration: formatDurationMs(segment.durationMs),
-    }))
-    const dateEvents = dateChangesChron.map((entry, index) => ({
-      id: `date-${entry.changed_at}-${index}`,
-      type: "date" as const,
-      date: entry.changed_at,
-      title: entry.field_name === "start_at" ? "Изменение старта" : "Изменение финиша",
-      subtitle: formatDateTime(entry.changed_at),
-      detail: `${formatDate(entry.old_value)} → ${formatDate(entry.new_value)}`,
-      duration: "—",
-    }))
-    return [...statusEvents, ...dateEvents].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    )
-  }, [dateChangesChron, statusSegments])
-
   useEffect(() => {
     if (!selectedTask) {
       setHistoryEntries([])
@@ -319,17 +294,6 @@ export function TaskHistorySection() {
       active = false
     }
   }, [selectedTask?.id])
-
-  useEffect(() => {
-    if (!analyticsOpen) return
-    if (analyticsEvents.length > 0) {
-      setSelectedEventId(analyticsEvents[0].id)
-    } else {
-      setSelectedEventId(null)
-    }
-  }, [analyticsEvents, analyticsOpen])
-
-  const selectedEvent = analyticsEvents.find((event) => event.id === selectedEventId)
 
   return (
     <Card className="flex h-full min-h-[600px] flex-col overflow-hidden">
@@ -652,8 +616,8 @@ export function TaskHistorySection() {
                     </div>
                   </div>
 
-                  <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-                    <div className="space-y-6 rounded-xl border bg-white/70 p-5">
+                  <div className="rounded-xl border bg-white/70 p-5">
+                    <div className="space-y-6">
                       <div>
                         <div className="text-sm font-semibold">Таймлайн статусов</div>
                         {statusSegments.length === 0 ? (
@@ -669,7 +633,6 @@ export function TaskHistorySection() {
                                   type="button"
                                   className="h-full transition hover:opacity-90"
                                   style={{ width: `${segment.percent}%`, backgroundColor: segment.color }}
-                                  onClick={() => setSelectedEventId(segment.id)}
                                   title={`${segment.label} • ${formatDurationMs(segment.durationMs)}`}
                                 />
                               ))}
@@ -679,7 +642,6 @@ export function TaskHistorySection() {
                                 <button
                                   key={`${segment.id}-label`}
                                   type="button"
-                                  onClick={() => setSelectedEventId(segment.id)}
                                   className="flex items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition hover:bg-muted/40"
                                 >
                                   <span className="flex items-center gap-2">
@@ -698,67 +660,6 @@ export function TaskHistorySection() {
                           </>
                         )}
                       </div>
-
-                      <div>
-                        <div className="text-sm font-semibold">Линия изменений сроков</div>
-                        {dateChangesChron.length === 0 ? (
-                          <div className="mt-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                            Нет изменений по срокам.
-                          </div>
-                        ) : (
-                          <div className="mt-4">
-                            <div className="relative h-16">
-                              <div className="absolute left-0 right-0 top-8 h-px bg-border" />
-                              <div className="relative flex h-full items-center justify-between gap-4">
-                                {dateChangesChron.map((entry, index) => {
-                                  const id = `date-${entry.changed_at}-${index}`
-                                  const isStart = entry.field_name === "start_at"
-                                  return (
-                                    <button
-                                      key={id}
-                                      type="button"
-                                      onClick={() => setSelectedEventId(id)}
-                                      className="flex min-w-[80px] flex-col items-center gap-2 text-xs text-muted-foreground"
-                                    >
-                                      <span
-                                        className={`h-3 w-3 rounded-full border-2 ${
-                                          isStart
-                                            ? "border-blue-500 bg-blue-200"
-                                            : "border-emerald-500 bg-emerald-200"
-                                        }`}
-                                      />
-                                      <span>{isStart ? "Старт" : "Финиш"}</span>
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border bg-white/80 p-5">
-                      <div className="text-sm font-semibold">Детали события</div>
-                      {selectedEvent ? (
-                        <div className="mt-4 space-y-4 text-sm">
-                          <div className="text-base font-semibold">{selectedEvent.title}</div>
-                          <div className="text-xs text-muted-foreground">{selectedEvent.subtitle}</div>
-                          <div className="rounded-lg border bg-muted/30 p-3 text-xs">
-                            {selectedEvent.detail}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Длительность:{" "}
-                            <span className="font-medium text-foreground">
-                              {selectedEvent.duration}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-4 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                          Выберите сегмент или событие, чтобы увидеть детали.
-                        </div>
-                      )}
                     </div>
                   </div>
                 </TabsContent>
