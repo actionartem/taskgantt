@@ -332,7 +332,7 @@ export function TaskHistorySection() {
   const selectedEvent = analyticsEvents.find((event) => event.id === selectedEventId)
 
   return (
-    <Card className="flex h-full min-h-[480px] flex-col overflow-hidden">
+    <Card className="flex h-full min-h-[600px] flex-col overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b p-4">
         <div>
           <h2 className="text-lg font-semibold">Все задачи и история</h2>
