@@ -295,8 +295,14 @@ export function TaskHistorySection() {
       statusSegments.forEach((segment) => {
         const startMs = new Date(segment.start).getTime()
         const endMs = new Date(segment.end ?? new Date().toISOString()).getTime()
+        const isLastSegment = !segment.end
         if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return
-        if (changeMs < startMs || changeMs > endMs) return
+        if (changeMs < startMs) return
+        if (isLastSegment) {
+          if (changeMs > endMs) return
+        } else if (changeMs >= endMs) {
+          return
+        }
 
         const durationMs = Math.max(1, endMs - startMs)
         const offsetPercent = Math.min(98, Math.max(2, ((changeMs - startMs) / durationMs) * 100))
