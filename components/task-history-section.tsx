@@ -332,13 +332,10 @@ export function TaskHistorySection() {
   const selectedEvent = analyticsEvents.find((event) => event.id === selectedEventId)
 
   return (
-    <Card className="flex h-full min-h-[240px] flex-col overflow-hidden">
+    <Card className="flex h-full min-h-[480px] flex-col overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b p-4">
         <div>
           <h2 className="text-lg font-semibold">Все задачи и история</h2>
-          <p className="text-sm text-muted-foreground">
-            Быстрый обзор, сортировка и история изменений статусов.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
