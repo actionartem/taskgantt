@@ -102,13 +102,6 @@ const getDurationMs = (start?: string | null, end?: string | null) => {
   return ms
 }
 
-const formatSignedDays = (ms: number) => {
-  if (!Number.isFinite(ms)) return "—"
-  const days = Math.round(ms / (1000 * 60 * 60 * 24))
-  if (days === 0) return "0д"
-  return `${days > 0 ? "+" : ""}${days}д`
-}
-
 const getStatusColor = (value?: string | null) => {
   const label = normalizeStatusLabel(value)
   if (Object.prototype.hasOwnProperty.call(STATUS_COLORS, label)) {
@@ -256,22 +249,6 @@ export function TaskHistorySection() {
     () => historyEntries.filter((entry) => entry.field_name === "status").length,
     [historyEntries],
   )
-
-  const startChanges = useMemo(
-    () => dateChangesChron.filter((entry) => entry.field_name === "start_at"),
-    [dateChangesChron],
-  )
-  const finishChanges = useMemo(
-    () => dateChangesChron.filter((entry) => entry.field_name === "due_at"),
-    [dateChangesChron],
-  )
-
-  const initialFinish =
-    finishChanges[0]?.old_value ?? finishChanges[0]?.new_value ?? selectedTask?.endDate ?? null
-  const finishShiftMs =
-    initialFinish && selectedTask?.endDate
-      ? new Date(selectedTask.endDate).getTime() - new Date(initialFinish).getTime()
-      : 0
 
   const statusSegments = selectedTimeline.map((segment, index) => {
     const durationMs = getDurationMs(segment.start, segment.end)
@@ -650,7 +627,7 @@ export function TaskHistorySection() {
                 </TabsList>
 
                 <TabsContent value="timeline" className="mt-6 space-y-6">
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <div className="rounded-xl border bg-white/80 p-4 shadow-sm">
                       <div className="text-xs uppercase text-muted-foreground">
                         Время в статусах
@@ -665,15 +642,6 @@ export function TaskHistorySection() {
                       <div className="mt-2 text-xl font-semibold">{longestStatus.label}</div>
                       <div className="text-xs text-muted-foreground">
                         {formatDurationMs(longestStatus.duration)}
-                      </div>
-                    </div>
-                    <div className="rounded-xl border bg-white/80 p-4 shadow-sm">
-                      <div className="text-xs uppercase text-muted-foreground">Сдвиг финиша</div>
-                      <div className="mt-2 text-xl font-semibold">
-                        {formatSignedDays(finishShiftMs)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {initialFinish ? `первый план: ${formatDate(initialFinish)}` : "нет данных"}
                       </div>
                     </div>
                     <div className="rounded-xl border bg-white/80 p-4 shadow-sm">
@@ -862,60 +830,28 @@ export function TaskHistorySection() {
                 </TabsContent>
 
                 <TabsContent value="metrics" className="mt-6 space-y-6">
-                  <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-                    <div className="rounded-xl border bg-white/80 p-5 shadow-sm">
-                      <div className="text-sm font-semibold">Распределение времени по статусам</div>
-                      <div className="mt-4 space-y-3">
-                        {Array.from(statusTotals.entries()).map(([label, value]) => {
-                          const percent = totalStatusMs ? (value / totalStatusMs) * 100 : 0
-                          return (
-                            <div key={label}>
-                              <div className="flex items-center justify-between text-xs">
-                                <span>{label}</span>
-                                <span className="text-muted-foreground">
-                                  {Math.round(percent)}%
-                                </span>
-                              </div>
-                              <div className="mt-1 h-2 w-full rounded-full bg-muted/40">
-                                <div
-                                  className="h-full rounded-full bg-blue-500"
-                                  style={{ width: `${percent}%` }}
-                                />
-                              </div>
+                  <div className="rounded-xl border bg-white/80 p-5 shadow-sm">
+                    <div className="text-sm font-semibold">Распределение времени по статусам</div>
+                    <div className="mt-4 space-y-3">
+                      {Array.from(statusTotals.entries()).map(([label, value]) => {
+                        const percent = totalStatusMs ? (value / totalStatusMs) * 100 : 0
+                        return (
+                          <div key={label}>
+                            <div className="flex items-center justify-between text-xs">
+                              <span>{label}</span>
+                              <span className="text-muted-foreground">
+                                {Math.round(percent)}%
+                              </span>
                             </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border bg-white/80 p-5 shadow-sm">
-                      <div className="text-sm font-semibold">Метрики по срокам</div>
-                      <div className="mt-4 space-y-3 text-sm">
-                        <div className="rounded-lg border bg-muted/20 p-3">
-                          <div className="text-xs text-muted-foreground">Переносов старта</div>
-                          <div className="text-lg font-semibold">{startChanges.length}</div>
-                        </div>
-                        <div className="rounded-lg border bg-muted/20 p-3">
-                          <div className="text-xs text-muted-foreground">Переносов финиша</div>
-                          <div className="text-lg font-semibold">{finishChanges.length}</div>
-                        </div>
-                        <div className="rounded-lg border bg-muted/20 p-3">
-                          <div className="text-xs text-muted-foreground">Сдвиг финиша</div>
-                          <div className="text-lg font-semibold">
-                            {formatSignedDays(finishShiftMs)}
+                            <div className="mt-1 h-2 w-full rounded-full bg-muted/40">
+                              <div
+                                className="h-full rounded-full bg-blue-500"
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                        <div className="rounded-lg border bg-muted/20 p-3">
-                          <div className="text-xs text-muted-foreground">
-                            Частота изменений
-                          </div>
-                          <div className="text-sm font-semibold">
-                            {statusChangesCount + dateChanges.length > 6
-                              ? "частые переносы"
-                              : "стабильная история"}
-                          </div>
-                        </div>
-                      </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </TabsContent>
