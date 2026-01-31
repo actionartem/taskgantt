@@ -322,10 +322,6 @@ export function TaskHistorySection() {
     return markers
   }, [dueDateChangesChron, statusSegments])
 
-  const hasDueMarkers = useMemo(
-    () => Array.from(dueMarkersBySegment.values()).some((segment) => segment.length > 0),
-    [dueMarkersBySegment],
-  )
 
   useEffect(() => {
     if (!selectedTask) {
@@ -702,7 +698,7 @@ export function TaskHistorySection() {
                                     {markers.map((marker) => (
                                       <span
                                         key={marker.id}
-                                        className="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-slate-900/70 shadow-sm"
+                                        className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-slate-900/70 shadow-sm transition-transform hover:scale-125"
                                         style={{ left: `${marker.offsetPercent}%` }}
                                         title={`Дата окончания продлилась с ${formatDate(
                                           marker.old_value,
@@ -713,12 +709,6 @@ export function TaskHistorySection() {
                                 )
                               })}
                             </div>
-                            {hasDueMarkers ? (
-                              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="inline-flex h-4 w-0.5 rounded-full bg-slate-900/70" />
-                                Сдвиг финиша внутри статуса
-                              </div>
-                            ) : null}
                             <div className="mt-4 grid gap-2 sm:grid-cols-2">
                               {statusSegments.map((segment) => (
                                 <button
