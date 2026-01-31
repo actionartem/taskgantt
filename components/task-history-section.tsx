@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 type SortKey = "id" | "status" | "priority" | "startDate" | "endDate" | "assignee"
 
 const SORT_LABELS: Record<SortKey, string> = {
@@ -322,10 +323,6 @@ export function TaskHistorySection() {
     return markers
   }, [dueDateChangesChron, statusSegments])
 
-  const hasDueMarkers = useMemo(
-    () => Array.from(dueMarkersBySegment.values()).some((segment) => segment.length > 0),
-    [dueMarkersBySegment],
-  )
 
   useEffect(() => {
     if (!selectedTask) {
@@ -700,14 +697,19 @@ export function TaskHistorySection() {
                                     title={`${segment.label} • ${formatDurationMs(segment.durationMs)}`}
                                   >
                                     {markers.map((marker) => (
-                                      <span
-                                        key={marker.id}
-                                        className="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-slate-900/70 shadow-sm"
-                                        style={{ left: `${marker.offsetPercent}%` }}
-                                        title={`Дата окончания продлилась с ${formatDate(
-                                          marker.old_value,
-                                        )} до ${formatDate(marker.new_value)}`}
-                                      />
+                                      <Tooltip key={marker.id}>
+                                        <TooltipTrigger asChild>
+                                          <span
+                                            className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/70 shadow-sm transition-transform duration-150 hover:scale-125 focus-visible:scale-125"
+                                            style={{ left: `${marker.offsetPercent}%` }}
+                                          />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                          Дата окончания продлилась с{" "}
+                                          {formatDate(marker.old_value)} до{" "}
+                                          {formatDate(marker.new_value)}
+                                        </TooltipContent>
+                                      </Tooltip>
                                     ))}
                                   </button>
                                 )
