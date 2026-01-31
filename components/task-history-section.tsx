@@ -715,6 +715,12 @@ export function TaskHistorySection() {
                                 )
                               })}
                             </div>
+                            {hasDueMarkers ? (
+                              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="inline-flex h-4 w-0.5 rounded-full bg-slate-900/70" />
+                                Сдвиг финиша внутри статуса
+                              </div>
+                            ) : null}
                             <div className="mt-4 grid gap-2 sm:grid-cols-2">
                               {statusSegments.map((segment) => (
                                 <button
