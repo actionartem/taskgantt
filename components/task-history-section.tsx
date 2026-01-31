@@ -1,10 +1,11 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { ArrowDownAZ, ArrowUpAZ, History, Search } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { ArrowDownAZ, ArrowUpAZ, CalendarDays, Flag, History, Search } from "lucide-react"
 
-import type { Task, TaskStatus } from "@/lib/types"
-import { STATUS_COLORS } from "@/lib/types"
+import type { Task, TaskHistoryEntry, TaskStatus } from "@/lib/types"
+import { STATUS_COLORS, normalizeStatusLabel } from "@/lib/types"
+import { getTaskHistory } from "@/lib/api"
 import { useApp } from "@/contexts/app-context"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -51,6 +52,15 @@ const formatDateTime = (value?: string | null) => {
   }).format(date)
 }
 
+const formatDate = (value?: string | null) => {
+  if (!value) return "—"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "—"
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "medium",
+  }).format(date)
+}
+
 const formatDuration = (start?: string | null, end?: string | null) => {
   if (!start) return "—"
   const startDate = new Date(start)
@@ -68,20 +78,36 @@ const formatDuration = (start?: string | null, end?: string | null) => {
   return parts.join(" ") || "0м"
 }
 
-const buildTimeline = (task: Task) => {
-  const logs = Array.isArray(task.statusLog) ? [...task.statusLog] : []
-  logs.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
+const getStatusColor = (value?: string | null) => {
+  const label = normalizeStatusLabel(value)
+  if (Object.prototype.hasOwnProperty.call(STATUS_COLORS, label)) {
+    return STATUS_COLORS[label as TaskStatus]
+  }
+  return "#94A3B8"
+}
 
-  return logs.map((entry, index) => {
-    const nextEntry = logs[index + 1]
+const buildStatusTimeline = (entries: TaskHistoryEntry[]) => {
+  const statusEntries = entries
+    .filter((entry) => entry.field_name === "status")
+    .slice()
+    .sort((a, b) => new Date(a.changed_at).getTime() - new Date(b.changed_at).getTime())
+
+  return statusEntries.map((entry, index) => {
+    const nextEntry = statusEntries[index + 1]
     return {
-      status: entry.newStatus,
-      start: entry.datetime,
-      end: nextEntry?.datetime ?? null,
-      from: entry.oldStatus,
-      to: entry.newStatus,
+      start: entry.changed_at,
+      end: nextEntry?.changed_at ?? null,
+      from: entry.old_value,
+      to: entry.new_value,
     }
   })
+}
+
+const buildDateChanges = (entries: TaskHistoryEntry[]) => {
+  return entries
+    .filter((entry) => entry.field_name === "start_at" || entry.field_name === "due_at")
+    .slice()
+    .sort((a, b) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime())
 }
 
 export function TaskHistorySection() {
@@ -91,6 +117,11 @@ export function TaskHistorySection() {
   const [sortAsc, setSortAsc] = useState(true)
   const [visibleCount, setVisibleCount] = useState(10)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [historyEntries, setHistoryEntries] = useState<TaskHistoryEntry[]>([])
+  const [historyStatus, setHistoryStatus] = useState<"idle" | "loading" | "ready" | "error">(
+    "idle",
+  )
+  const [historyError, setHistoryError] = useState<string | null>(null)
 
   const filteredTasks = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -151,7 +182,37 @@ export function TaskHistorySection() {
   const visibleTasks = sortedTasks.slice(0, visibleCount)
   const hasMore = visibleCount < sortedTasks.length
 
-  const selectedTimeline = selectedTask ? buildTimeline(selectedTask) : []
+  const selectedTimeline = selectedTask ? buildStatusTimeline(historyEntries) : []
+  const dateChanges = selectedTask ? buildDateChanges(historyEntries) : []
+
+  useEffect(() => {
+    if (!selectedTask) {
+      setHistoryEntries([])
+      setHistoryStatus("idle")
+      setHistoryError(null)
+      return
+    }
+
+    let active = true
+    setHistoryStatus("loading")
+    setHistoryError(null)
+    getTaskHistory(selectedTask.id)
+      .then((data) => {
+        if (!active) return
+        setHistoryEntries(Array.isArray(data) ? data : [])
+        setHistoryStatus("ready")
+      })
+      .catch((error: Error) => {
+        if (!active) return
+        setHistoryEntries([])
+        setHistoryStatus("error")
+        setHistoryError(error.message || "Не удалось загрузить историю")
+      })
+
+    return () => {
+      active = false
+    }
+  }, [selectedTask?.id])
 
   return (
     <Card className="flex h-full min-h-[240px] flex-col overflow-hidden">
@@ -257,7 +318,7 @@ export function TaskHistorySection() {
 
         <div className="flex min-h-0 flex-col">
           <div className="border-b p-4">
-            <h3 className="text-sm font-semibold text-muted-foreground">История статусов</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground">История изменений</h3>
           </div>
           <ScrollArea className="flex-1 min-h-0" type="always">
             <div className="flex flex-1 flex-col gap-4 px-4 py-6">
@@ -275,39 +336,126 @@ export function TaskHistorySection() {
                   </div>
 
                   <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
-                    Здесь собрана история смены статусов. Мы показываем продолжительность
-                    каждого статуса, чтобы понять, где задача задерживается.
+                    Здесь собрана история смены статусов и дат. Видно, когда менялась задача и
+                    сколько времени она находилась в каждом статусе.
                   </div>
 
-                  {selectedTimeline.length === 0 ? (
+                  <div className="grid gap-3 rounded-lg border bg-muted/10 p-4 text-sm sm:grid-cols-3">
+                    <div>
+                      <div className="text-xs uppercase text-muted-foreground">Текущий статус</div>
+                      <div className="mt-1 flex items-center gap-2 text-sm font-medium">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: getStatusColor(selectedTask.status) }}
+                        />
+                        {normalizeStatusLabel(selectedTask.status)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase text-muted-foreground">Старт</div>
+                      <div className="mt-1 text-sm font-medium">
+                        {selectedTask.startDate || "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase text-muted-foreground">Финиш</div>
+                      <div className="mt-1 text-sm font-medium">
+                        {selectedTask.endDate || "—"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {historyStatus === "loading" ? (
                     <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                      История пока пустая. Первые записи появятся после изменения статуса.
+                      Загружаем историю изменений…
+                    </div>
+                  ) : historyStatus === "error" ? (
+                    <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+                      Не удалось загрузить историю. {historyError}
+                    </div>
+                  ) : historyEntries.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                      История пока пустая. Первые записи появятся после изменения статуса или дат.
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {selectedTimeline.map((item, index) => (
-                        <div key={`${item.start}-${index}`} className="rounded-lg border p-4">
-                          <div className="flex items-center gap-3">
-                            <span
-                              className="h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: STATUS_COLORS[item.status] }}
-                            />
-                            <div className="flex-1">
-                              <div className="text-sm font-medium">{item.status}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {formatDateTime(item.start)} →{" "}
-                                {item.end ? formatDateTime(item.end) : "сейчас"}
+                    <div className="space-y-6">
+                      <div>
+                        <h4 className="text-sm font-semibold text-muted-foreground">
+                          Изменения статуса
+                        </h4>
+                        {selectedTimeline.length === 0 ? (
+                          <div className="mt-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            Нет записей по статусам.
+                          </div>
+                        ) : (
+                          <div className="mt-3 space-y-3">
+                            {selectedTimeline.map((item, index) => (
+                              <div key={`${item.start}-${index}`} className="rounded-lg border p-4">
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <span
+                                    className="h-2.5 w-2.5 rounded-full"
+                                    style={{ backgroundColor: getStatusColor(item.to) }}
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium">
+                                      {normalizeStatusLabel(item.to)}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {formatDateTime(item.start)} →{" "}
+                                      {item.end ? formatDateTime(item.end) : "сейчас"}
+                                    </div>
+                                  </div>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {formatDuration(item.start, item.end)}
+                                  </Badge>
+                                </div>
+                                <div className="mt-3 text-xs text-muted-foreground">
+                                  Переход: {normalizeStatusLabel(item.from)} →{" "}
+                                  {normalizeStatusLabel(item.to)}
+                                </div>
                               </div>
-                            </div>
-                            <Badge variant="secondary" className="text-xs">
-                              {formatDuration(item.start, item.end)}
-                            </Badge>
+                            ))}
                           </div>
-                          <div className="mt-3 text-xs text-muted-foreground">
-                            Переход: {item.from} → {item.to}
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-semibold text-muted-foreground">
+                          Изменения сроков
+                        </h4>
+                        {dateChanges.length === 0 ? (
+                          <div className="mt-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                            Нет изменений по датам.
                           </div>
-                        </div>
-                      ))}
+                        ) : (
+                          <div className="mt-3 space-y-3">
+                            {dateChanges.map((entry, index) => (
+                              <div key={`${entry.changed_at}-${index}`} className="rounded-lg border p-4">
+                                <div className="flex flex-wrap items-center gap-3">
+                                  {entry.field_name === "start_at" ? (
+                                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                                  ) : (
+                                    <Flag className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                  <div className="flex-1">
+                                    <div className="text-sm font-medium">
+                                      {entry.field_name === "start_at"
+                                        ? "Старт задачи"
+                                        : "Финиш задачи"}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {formatDate(entry.old_value)} → {formatDate(entry.new_value)}
+                                    </div>
+                                  </div>
+                                  <Badge variant="outline" className="text-xs">
+                                    {formatDateTime(entry.changed_at)}
+                                  </Badge>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </>

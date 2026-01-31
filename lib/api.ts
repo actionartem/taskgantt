@@ -9,6 +9,7 @@ import {
   STATUS_RU_TO_API,
   PRIORITY_API_TO_RU,
   PRIORITY_RU_TO_API,
+  TaskHistoryEntry,
 } from "./types"
 
 /* ===================== BASE ===================== */
@@ -198,6 +199,10 @@ export async function getMe(userId: number | string) {
   return request<Me>(`/me?user_id=${userId}`)
 }
 
+export async function getTaskHistory(taskId: number | string) {
+  return request<TaskHistoryEntry[]>(`/tasks/${taskId}/history`)
+}
+
 export async function requestTelegramLink(login: string) {
   return request<TelegramRequestResponse>("/auth/telegram/request", {
     method: "POST",
@@ -364,18 +369,6 @@ export async function updateTask(
       payload.updated_by === undefined ? undefined : payload.updated_by ?? null,
   }
   return updateTaskNew(Number(taskId), patch)
-}
-
-/* Историю мы убрали — возвращаем пустой массив для совместимости */
-export async function getTaskHistory(_taskId: number | string) {
-  return [] as Array<{
-    id: number
-    user_id: number | null
-    user_name?: string | null
-    action: string
-    text: string | null
-    created_at: string
-  }>
 }
 
 /* ===================== TAGS ===================== */

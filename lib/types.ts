@@ -44,6 +44,15 @@ export interface StatusChangeLog {
   user?: string | null;
 }
 
+export type TaskHistoryField = "status" | "start_at" | "due_at";
+
+export interface TaskHistoryEntry {
+  field_name: TaskHistoryField;
+  old_value: string | null;
+  new_value: string | null;
+  changed_at: string;
+}
+
 export interface AppSettings {
   executors: Executor[];
   tags: string[]; // названия
@@ -61,6 +70,21 @@ export const STATUS_COLORS: Record<TaskStatus, string> = {
   "готова к разработке": "#14B8A6",
   разработка: "#22C55E",
   завершена: "#059669",
+};
+
+const STATUS_API_TO_RU_CANONICAL: Record<string, string> = {
+  new: "не в работе",
+  in_progress: "разработка",
+  done: "завершена",
+  review: "ревью",
+};
+
+export const normalizeStatusLabel = (value?: string | null): string => {
+  if (!value) return "—";
+  if (Object.prototype.hasOwnProperty.call(STATUS_COLORS, value)) {
+    return value;
+  }
+  return STATUS_API_TO_RU_CANONICAL[value] ?? value;
 };
 
 export const PRIORITY_COLORS: Record<TaskPriority, string> = {
