@@ -621,7 +621,7 @@ export function TaskHistorySection() {
       </div>
 
       <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
-        <DialogContent className="max-w-[98vw] w-[min(98vw,1400px)] h-[92vh] max-h-[92vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[95vw] h-[92vh] max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-semibold">
               Визуализация истории задачи
