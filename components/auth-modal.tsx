@@ -88,9 +88,9 @@ export function AuthModal({
           onValueChange={(value) => setActiveTab(value as "login" | "register")}
           className="mt-4"
         >
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-1">
             <TabsTrigger value="login">Вход</TabsTrigger>
-            <TabsTrigger value="register">Регистрация</TabsTrigger>
+            {/* <TabsTrigger value="register">Регистрация</TabsTrigger> */}
           </TabsList>
 
           <TabsContent value="login" className="mt-6">
