@@ -355,7 +355,7 @@ export function TaskHistorySection() {
 
   return (
     <Card className="flex h-full min-h-[600px] flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b p-4">
         <div>
           <h2 className="text-lg font-semibold">Все задачи и история</h2>
         </div>
@@ -366,7 +366,7 @@ export function TaskHistorySection() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Поиск по названию или ID"
-              className="w-56 pl-9"
+              className="pl-9 w-56"
             />
           </div>
           <Select value={sortKey} onValueChange={(value) => setSortKey(value as SortKey)}>
@@ -393,17 +393,17 @@ export function TaskHistorySection() {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-2">
-        <div className="flex min-h-0 flex-col border-r border-border/60">
-          <ScrollArea className="premium-scroll min-h-0 flex-1" type="always">
+        <div className="flex min-h-0 flex-col border-r">
+          <ScrollArea className="flex-1 min-h-0" type="always">
             <div className="divide-y">
               {visibleTasks.map((task) => (
                 <button
                   key={task.id}
                   type="button"
                   onClick={() => setSelectedTask(task)}
-                  className="interactive-lift flex w-full items-center gap-4 px-4 py-3 text-left transition hover:bg-muted/60"
+                  className="flex w-full items-center gap-4 px-4 py-3 text-left transition hover:bg-muted/60"
                 >
-                  <div className="w-16 rounded-md bg-muted/50 px-2 py-1 text-center text-xs font-mono text-muted-foreground">#{task.id}</div>
+                  <div className="w-16 text-sm font-mono text-muted-foreground">#{task.id}</div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{task.title}</span>
@@ -436,7 +436,7 @@ export function TaskHistorySection() {
             </div>
           </ScrollArea>
 
-          <div className="flex items-center justify-between border-t border-border/60 px-4 py-3 text-sm text-muted-foreground">
+          <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-muted-foreground">
             <span>
               Показано {visibleTasks.length} из {sortedTasks.length}
             </span>
@@ -453,9 +453,9 @@ export function TaskHistorySection() {
         </div>
 
         <div className="flex min-h-0 flex-col">
-          <div className="border-b border-border/60 p-4">
+          <div className="border-b p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold tracking-wide text-muted-foreground">История изменений</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground">История изменений</h3>
               <Button
                 variant="outline"
                 size="sm"
@@ -467,7 +467,7 @@ export function TaskHistorySection() {
               </Button>
             </div>
           </div>
-          <ScrollArea className="premium-scroll min-h-0 flex-1" type="always">
+          <ScrollArea className="flex-1 min-h-0" type="always">
             <div className="flex flex-1 flex-col gap-4 px-4 py-6">
               {selectedTask ? (
                 <>
@@ -482,12 +482,12 @@ export function TaskHistorySection() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
+                  <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
                     Здесь собрана история смены статусов и дат. Видно, когда менялась задача и
                     сколько времени она находилась в каждом статусе.
                   </div>
 
-                  <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/10 p-4 text-sm sm:grid-cols-3">
+                  <div className="grid gap-3 rounded-lg border bg-muted/10 p-4 text-sm sm:grid-cols-3">
                     <div>
                       <div className="text-xs uppercase text-muted-foreground">Текущий статус</div>
                       <div className="mt-1 flex items-center gap-2 text-sm font-medium">
@@ -513,7 +513,7 @@ export function TaskHistorySection() {
                   </div>
 
                   {historyStatus === "loading" ? (
-                    <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                       Загружаем историю изменений…
                     </div>
                   ) : historyStatus === "error" ? (
@@ -521,7 +521,7 @@ export function TaskHistorySection() {
                       Не удалось загрузить историю. {historyError}
                     </div>
                   ) : historyEntries.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                       История пока пустая. Первые записи появятся после изменения статуса или дат.
                     </div>
                   ) : (
@@ -531,7 +531,7 @@ export function TaskHistorySection() {
                           Изменения статуса
                         </h4>
                         {selectedTimeline.length === 0 ? (
-                          <div className="mt-3 rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
+                          <div className="mt-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
                             Нет записей по статусам.
                           </div>
                         ) : (
@@ -571,7 +571,7 @@ export function TaskHistorySection() {
                           Изменения сроков
                         </h4>
                         {dateChanges.length === 0 ? (
-                          <div className="mt-3 rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
+                          <div className="mt-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
                             Нет изменений по датам.
                           </div>
                         ) : (
@@ -607,7 +607,7 @@ export function TaskHistorySection() {
                   )}
                 </>
               ) : (
-                <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                   Выберите задачу слева, чтобы увидеть историю статусов.
                 </div>
               )}
@@ -624,7 +624,7 @@ export function TaskHistorySection() {
             </DialogTitle>
           </DialogHeader>
           {!selectedTask ? (
-            <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
               Выберите задачу, чтобы увидеть аналитику.
             </div>
           ) : (
@@ -647,7 +647,7 @@ export function TaskHistorySection() {
 
                 <TabsContent value="timeline" className="mt-6 space-y-6">
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <div className="rounded-xl border border-border/60 bg-background/70 p-4 shadow-sm">
+                    <div className="rounded-xl border bg-white/80 p-4 shadow-sm">
                       <div className="text-xs uppercase text-muted-foreground">
                         Время в статусах
                       </div>
@@ -656,14 +656,14 @@ export function TaskHistorySection() {
                       </div>
                       <div className="text-xs text-muted-foreground">учтено до «сейчас»</div>
                     </div>
-                    <div className="rounded-xl border border-border/60 bg-background/70 p-4 shadow-sm">
+                    <div className="rounded-xl border bg-white/80 p-4 shadow-sm">
                       <div className="text-xs uppercase text-muted-foreground">Самый долгий</div>
                       <div className="mt-2 text-xl font-semibold">{longestStatus.label}</div>
                       <div className="text-xs text-muted-foreground">
                         {formatDurationMs(longestStatus.duration)}
                       </div>
                     </div>
-                    <div className="rounded-xl border border-border/60 bg-background/70 p-4 shadow-sm">
+                    <div className="rounded-xl border bg-white/80 p-4 shadow-sm">
                       <div className="text-xs uppercase text-muted-foreground">Изменений</div>
                       <div className="mt-2 text-xl font-semibold">
                         {statusChangesCount + dateChanges.length}
@@ -674,17 +674,17 @@ export function TaskHistorySection() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-border/60 bg-background/65 p-5 backdrop-blur">
+                  <div className="rounded-xl border bg-white/70 p-5">
                     <div className="space-y-6">
                       <div>
                         <div className="text-sm font-semibold">Таймлайн статусов</div>
                         {statusSegments.length === 0 ? (
-                          <div className="mt-3 rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
+                          <div className="mt-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
                             Нет данных по статусам.
                           </div>
                         ) : (
                           <>
-                            <div className="mt-4 flex h-10 w-full overflow-hidden rounded-full border border-border/70 bg-muted/30">
+                            <div className="mt-4 flex h-10 w-full overflow-hidden rounded-full border bg-muted/30">
                               {statusSegments.map((segment) => {
                                 const markers = dueMarkersBySegment.get(segment.id) ?? []
                                 return (
@@ -714,7 +714,7 @@ export function TaskHistorySection() {
                                 <button
                                   key={`${segment.id}-label`}
                                   type="button"
-                                  className="interactive-lift flex items-center justify-between rounded-lg border border-border/60 px-3 py-2 text-left text-xs transition hover:bg-muted/40"
+                                  className="flex items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition hover:bg-muted/40"
                                 >
                                   <span className="flex items-center gap-2">
                                     <span
@@ -738,7 +738,7 @@ export function TaskHistorySection() {
 
                 <TabsContent value="dates" className="mt-6">
                   {dateChangesChron.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                       Изменений по срокам пока нет.
                     </div>
                   ) : (
@@ -746,7 +746,7 @@ export function TaskHistorySection() {
                       {dateChangesChron.map((entry, index) => (
                         <div
                           key={`${entry.changed_at}-${index}`}
-                          className="rounded-xl border border-border/60 bg-background/70 p-4 shadow-sm"
+                          className="rounded-xl border bg-white/80 p-4 shadow-sm"
                         >
                           <div className="text-sm font-semibold">
                             {entry.field_name === "start_at" ? "Старт задачи" : "Финиш задачи"}
@@ -765,7 +765,7 @@ export function TaskHistorySection() {
 
                 <TabsContent value="statuses" className="mt-6">
                   {statusSegments.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                       Нет данных по статусам.
                     </div>
                   ) : (
@@ -773,7 +773,7 @@ export function TaskHistorySection() {
                       {statusSegments.map((segment) => (
                         <div
                           key={`${segment.id}-card`}
-                          className="rounded-xl border border-border/60 bg-background/70 p-4 shadow-sm"
+                          className="rounded-xl border bg-white/80 p-4 shadow-sm"
                         >
                           <div className="flex items-center gap-3">
                             <span
@@ -828,7 +828,7 @@ export function TaskHistorySection() {
 
                 <TabsContent value="events" className="mt-6">
                   {historyEntries.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                    <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                       История событий пуста.
                     </div>
                   ) : (
@@ -843,7 +843,7 @@ export function TaskHistorySection() {
                         .map((entry, index) => (
                           <div
                             key={`${entry.changed_at}-${index}`}
-                            className="rounded-xl border border-border/60 bg-background/70 p-4 shadow-sm"
+                            className="rounded-xl border bg-white/80 p-4 shadow-sm"
                           >
                             <div className="flex items-center justify-between text-sm">
                               <span className="font-semibold">

@@ -195,7 +195,7 @@ export function Settings({ open, onClose }: SettingsProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="premium-scroll max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Настройки</DialogTitle>
         </DialogHeader>
@@ -261,7 +261,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                   <p className="text-sm text-muted-foreground text-center py-4">Нет исполнителей</p>
                 ) : (
                   settings.executors.map((executor) => (
-                    <div key={executor.id} className="interactive-lift flex items-center justify-between rounded-xl border border-border/60 bg-background/55 p-3">
+                    <div key={executor.id} className="flex items-center justify-between p-3 border rounded">
                       <div>
                         <div className="font-medium">{executor.name}</div>
                         {executor.role && <div className="text-sm text-muted-foreground">{executor.role}</div>}
@@ -322,7 +322,7 @@ export function Settings({ open, onClose }: SettingsProps) {
                   <p className="text-sm text-muted-foreground text-center py-4 w-full">Нет тегов</p>
                 ) : (
                   settings.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="gap-2 border border-border/60 bg-secondary/55">
+                    <Badge key={tag} variant="secondary" className="gap-2">
                       {tag}
                       <button
                         onClick={() => handleDeleteTag(tag)}
