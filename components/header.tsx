@@ -57,17 +57,17 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
   })
 
   return (
-    <header className="border-b bg-card">
+    <header className="glass-panel border-x-0 border-t-0 rounded-none">
       <div className="container mx-auto px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button asChild className="bg-sky-200 text-sky-900 hover:bg-sky-300">
+            <Button asChild variant="outline" className="border-sky-400/50 bg-sky-200/70 text-sky-900 hover:bg-sky-300/80 dark:border-sky-300/30 dark:bg-sky-500/15 dark:text-sky-100">
               <a href="https://risk.simpletracker.ru/" target="_blank" rel="noopener noreferrer">
                 Планирование ресурсов команды разработки
               </a>
             </Button>
 
-            <h1 className="text-2xl font-bold">Миноры</h1>
+            <h1 className="bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text text-2xl font-bold text-transparent">Миноры</h1>
           </div>
 
           <div className="flex items-center gap-2">
@@ -84,17 +84,17 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="icon" onClick={onOpenSettings}>
+            <Button variant="outline" size="icon" onClick={onOpenSettings} className="rounded-full">
               <SettingsIcon className="h-5 w-5" />
             </Button>
 
-            <Button variant="outline" size="icon" onClick={toggleTheme}>
+            <Button variant="outline" size="icon" onClick={toggleTheme} className="rounded-full">
               {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </Button>
 
             <Button
               variant="secondary"
-              className="flex items-center gap-2 px-3"
+              className="flex items-center gap-2 rounded-full border border-border/60 bg-secondary/75 px-3"
               onClick={onOpenAuth}
               title={user ? "Профиль" : "Войти"}
             >
@@ -106,8 +106,8 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge variant="secondary" className="px-4 py-2 select-none">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Badge variant="secondary" className="px-4 py-2 select-none shadow-sm">
             <span className="font-semibold">Всего задач:</span>
             <span className="ml-2 font-bold">{tasks.length}</span>
           </Badge>
@@ -119,7 +119,7 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
                 key={status}
                 asChild
                 variant={isSelected ? "default" : "secondary"}
-                className="px-4 py-2 cursor-pointer select-none"
+                className="px-4 py-2 cursor-pointer select-none transition-all hover:scale-[1.01]"
               >
                 <button
                   type="button"
