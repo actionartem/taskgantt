@@ -57,20 +57,20 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
   })
 
   return (
-    <header className="border-b bg-card">
+    <header className="border-b border-white/40 bg-card/80 shadow-sm backdrop-blur-xl dark:border-white/10">
       <div className="container mx-auto px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button asChild className="bg-sky-200 text-sky-900 hover:bg-sky-300">
+            <Button asChild className="bg-linear-to-r from-sky-400 to-cyan-400 text-white shadow-md shadow-cyan-400/30 hover:from-sky-500 hover:to-cyan-500">
               <a href="https://risk.simpletracker.ru/" target="_blank" rel="noopener noreferrer">
                 Планирование ресурсов команды разработки
               </a>
             </Button>
 
-            <h1 className="text-2xl font-bold">Миноры</h1>
+            <h1 className="bg-linear-to-r from-primary to-cyan-500 bg-clip-text text-2xl font-extrabold text-transparent">Миноры</h1>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-xl border border-white/50 bg-card/75 p-2 shadow-sm backdrop-blur-sm dark:border-white/10">
 
             <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
               <SelectTrigger className="w-[180px]">
@@ -107,7 +107,7 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Badge variant="secondary" className="px-4 py-2 select-none">
+          <Badge variant="secondary" className="px-4 py-2 select-none shadow-sm">
             <span className="font-semibold">Всего задач:</span>
             <span className="ml-2 font-bold">{tasks.length}</span>
           </Badge>
@@ -119,7 +119,7 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
                 key={status}
                 asChild
                 variant={isSelected ? "default" : "secondary"}
-                className="px-4 py-2 cursor-pointer select-none"
+                className="cursor-pointer select-none px-4 py-2 shadow-sm"
               >
                 <button
                   type="button"

@@ -194,33 +194,33 @@ export default function HomePage() {
         />
 
         {authError ? (
-          <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
+          <div className="mx-4 mt-4 rounded-xl bg-red-500/90 px-4 py-2 text-center text-sm text-white shadow-lg">{authError}</div>
         ) : null}
 
         <main className="flex-1 overflow-hidden">
           <div className="flex h-full flex-col gap-4 p-4">
-            <div ref={containerRef} className="flex min-h-[280px] flex-1 items-stretch">
+            <div ref={containerRef} className="glass-surface flex min-h-[280px] flex-1 items-stretch p-2">
               <div
-                className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
+                className="flex min-w-[200px] flex-1 flex-col overflow-hidden rounded-xl"
                 style={{ flexBasis: `${leftWidth}%` }}
               >
                 <TaskList onCreateTask={handleCreateTask} onEditTask={handleEditTask} />
               </div>
               <div
-                className="mx-4 flex w-1 cursor-col-resize items-stretch"
+                className="mx-4 flex w-1.5 cursor-col-resize items-stretch"
                 onMouseDown={startResizing}
                 onTouchStart={startResizing}
               >
-                <div className="h-full w-full rounded bg-neutral-200 transition-colors hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600" />
+                <div className="h-full w-full rounded-full bg-linear-to-b from-primary/40 via-primary/20 to-transparent transition-all hover:from-primary/60 hover:via-primary/30" />
               </div>
               <div
-                className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
+                className="flex min-w-[200px] flex-1 flex-col overflow-hidden rounded-xl"
                 style={{ flexBasis: `${100 - leftWidth}%` }}
               >
                 <GanttChart onEditTask={handleEditTask} />
               </div>
             </div>
-            <div className="h-[65vh] min-h-[600px]">
+            <div className="glass-surface h-[65vh] min-h-[600px] p-2">
               <TaskHistorySection />
             </div>
           </div>
