@@ -47,7 +47,7 @@ export function TaskFilters({
   const { settings } = useApp()
 
   return (
-    <div className="space-y-3 border-b border-white/30 bg-card/70 p-4 backdrop-blur-xs dark:border-white/10">
+    <div className="space-y-3 p-4 border-b bg-card">
       <Input
         placeholder="Поиск по названию или ID..."
         value={search}
@@ -55,10 +55,10 @@ export function TaskFilters({
         className="w-full"
       />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <div className="flex items-center gap-2">
           <Select value={status} onValueChange={onStatusChange}>
-            <SelectTrigger className="w-40 bg-background/80">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Статус" />
             </SelectTrigger>
             <SelectContent>
@@ -74,7 +74,7 @@ export function TaskFilters({
 
         <div className="flex items-center gap-2">
           <Select value={assigneeId} onValueChange={onAssigneeChange}>
-            <SelectTrigger className="w-40 bg-background/80">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Исполнитель" />
             </SelectTrigger>
             <SelectContent>
@@ -91,7 +91,7 @@ export function TaskFilters({
 
         <div className="flex items-center gap-2">
           <Select value={tag} onValueChange={onTagChange}>
-            <SelectTrigger className="w-40 bg-background/80">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Тег" />
             </SelectTrigger>
             <SelectContent>
@@ -108,7 +108,7 @@ export function TaskFilters({
 
         <div className="flex items-center gap-2">
           <Select value={priority} onValueChange={onPriorityChange}>
-            <SelectTrigger className="w-40 bg-background/80">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Приоритет" />
             </SelectTrigger>
             <SelectContent>

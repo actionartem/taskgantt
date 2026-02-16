@@ -42,9 +42,9 @@ export const TaskList: React.FC<TaskListProps> = ({ onCreateTask, onEditTask }) 
   const groupedTasks = groupTasks(filteredTasks, groupBy)
 
   return (
-    <Card className="relative flex h-full flex-col overflow-hidden border-white/50 bg-card/85 shadow-xl dark:border-white/10">
-      <div className="flex items-center justify-between border-b border-white/30 bg-linear-to-r from-primary/5 via-transparent to-cyan-400/10 p-4 dark:border-white/10">
-        <h2 className="text-lg font-semibold tracking-tight">Список задач</h2>
+    <Card className="relative flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b">
+        <h2 className="text-lg font-semibold">Список задач</h2>
         <Button onClick={onCreateTask} size="sm">
           <Plus className="h-4 w-4 mr-1" />
           Создать задачу
@@ -64,13 +64,13 @@ export const TaskList: React.FC<TaskListProps> = ({ onCreateTask, onEditTask }) 
         onPriorityChange={setPriority}
       />
 
-      <div className="fancy-scrollbar relative flex-1 overflow-y-auto">
+      <div className="relative flex-1 overflow-y-auto">
         <div className="pointer-events-none absolute inset-0 bg-[url('/images/clown.jpeg')] bg-[length:100%_auto] bg-top bg-no-repeat opacity-5" />
         <div className="relative z-10">
           {Object.entries(groupedTasks).map(([groupName, groupTasksList]) => (
             <div key={groupName}>
               {groupBy !== "none" && (
-                <div className="sticky top-0 border-b border-white/40 bg-muted/85 px-4 py-2 text-sm font-medium backdrop-blur-xs dark:border-white/10">{groupName}</div>
+                <div className="sticky top-0 bg-muted px-4 py-2 text-sm font-medium border-b">{groupName}</div>
               )}
               {groupTasksList.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">Задачи не найдены</div>
