@@ -179,7 +179,7 @@ export function ProfileModal({
           </div>
 
           {/* Telegram */}
-          <div className="space-y-2 rounded-xl border border-border/60 bg-background/50 p-3">
+          <div className="space-y-2 rounded-md border p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">Telegram</p>
@@ -207,7 +207,7 @@ export function ProfileModal({
               <Button
                 type="button"
                 variant="ghost"
-                className="mt-2 flex items-center gap-2 px-0 text-sm text-primary"
+                className="mt-2 flex items-center gap-2 px-0 text-sm"
                 onClick={handleOpenTgLink}
               >
                 Открыть в Telegram
@@ -216,7 +216,7 @@ export function ProfileModal({
             ) : null}
           </div>
 
-          {error ? <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-500">{error}</p> : null}
+          {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
           <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
             {onLogout ? (

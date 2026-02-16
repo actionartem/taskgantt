@@ -186,13 +186,13 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="premium-scroll max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{task ? "Редактировать задачу" : "Создать задачу"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="title">
                 Название <span className="text-destructive">*</span>
@@ -249,7 +249,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Статус</Label>
               <Select
@@ -289,7 +289,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Дата начала работ</Label>
               <Input
@@ -330,7 +330,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
 
           <div className="space-y-2">
             <Label>Теги</Label>
-            <div className="flex flex-wrap gap-2 rounded-xl border border-border/50 bg-muted/20 p-3">
+            <div className="flex flex-wrap gap-2">
               {allTags.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Нет доступных тегов. Добавьте их в настройках.
@@ -353,7 +353,7 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-border/60 pt-4">
+          <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Отмена
             </Button>

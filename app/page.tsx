@@ -184,9 +184,9 @@ export default function HomePage() {
   const isLocked = !currentUser
 
   return (
-    <div className="mesh-grid relative flex h-screen flex-col">
+    <div className="flex h-screen flex-col">
       {/* Весь интерфейс в «заблокированном» контейнере */}
-      <div className={isLocked ? "pointer-events-none select-none blur-sm saturate-75" : ""}>
+      <div className={isLocked ? "pointer-events-none select-none blur-sm" : ""}>
         <Header
           onOpenSettings={() => setShowSettings(true)}
           onOpenAuth={handleHeaderUserClick}
@@ -194,12 +194,12 @@ export default function HomePage() {
         />
 
         {authError ? (
-          <div className="mx-4 mt-3 rounded-xl border border-red-400/70 bg-red-500/90 px-4 py-2 text-center text-sm text-white shadow-lg">{authError}</div>
+          <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
         ) : null}
 
         <main className="flex-1 overflow-hidden">
-          <div className="flex h-full flex-col gap-4 px-4 pb-4 pt-3">
-            <div ref={containerRef} className="flex min-h-[280px] flex-1 items-stretch gap-1">
+          <div className="flex h-full flex-col gap-4 p-4">
+            <div ref={containerRef} className="flex min-h-[280px] flex-1 items-stretch">
               <div
                 className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
                 style={{ flexBasis: `${leftWidth}%` }}
@@ -207,11 +207,11 @@ export default function HomePage() {
                 <TaskList onCreateTask={handleCreateTask} onEditTask={handleEditTask} />
               </div>
               <div
-                className="mx-1 flex w-2 cursor-col-resize items-stretch rounded-full"
+                className="mx-4 flex w-1 cursor-col-resize items-stretch"
                 onMouseDown={startResizing}
                 onTouchStart={startResizing}
               >
-                <div className="h-full w-full rounded-full bg-gradient-to-b from-primary/20 via-primary/45 to-primary/20 shadow-inner transition-all hover:from-primary/30 hover:via-primary/70 hover:to-primary/30" />
+                <div className="h-full w-full rounded bg-neutral-200 transition-colors hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600" />
               </div>
               <div
                 className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
@@ -225,8 +225,8 @@ export default function HomePage() {
             </div>
           </div>
         </main>
-        <footer className="px-4 pb-5">
-          <div className="h-7 rounded-full border border-white/25 bg-gradient-to-r from-primary/15 via-background/85 to-chart-2/20 shadow-inner backdrop-blur" />
+        <footer className="px-4 pb-6">
+          <div className="h-8 rounded-full bg-gradient-to-r from-neutral-200 via-neutral-100 to-neutral-200 shadow-inner dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800" />
         </footer>
 
         <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />

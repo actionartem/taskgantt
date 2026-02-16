@@ -272,8 +272,8 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
 
   if (visibleTasks.length === 0) {
     return (
-      <Card className="flex h-full flex-col">
-        <div className="border-b border-border/60 p-4">
+      <Card className="flex flex-col h-full">
+        <div className="p-4 border-b">
           <h2 className="text-lg font-semibold">Диаграмма Ганта</h2>
         </div>
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -284,28 +284,28 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
   }
 
   return (
-    <Card className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between gap-4 border-b border-border/60 p-4">
+    <Card className="flex flex-col h-full overflow-hidden">
+      <div className="p-4 border-b flex items-center justify-between gap-4">
         <h2 className="text-lg font-semibold">Диаграмма Ганта</h2>
         <Button variant="outline" size="sm" onClick={handleScrollToToday}>
           Сегодня
         </Button>
       </div>
 
-      <div className="border-b border-border/60">
-        <div ref={topScrollRef} className="premium-scroll h-4 overflow-x-auto">
+      <div className="border-b">
+        <div ref={topScrollRef} className="h-4 overflow-x-auto">
           <div style={{ width: `${chartWidth}px`, height: "1px" }} />
         </div>
       </div>
 
-      <div className="premium-scroll flex-1 overflow-auto" ref={mainScrollRef}>
+      <div className="flex-1 overflow-auto" ref={mainScrollRef}>
         <div className="relative min-w-max">
           <div
-            className="pointer-events-none absolute top-0 bottom-0 z-20 w-px bg-red-500/90 shadow-[0_0_22px_rgba(239,68,68,0.7)]"
+            className="absolute top-0 bottom-0 w-px bg-red-500/90 pointer-events-none z-20"
             style={{ left: `${getPositionFromDate(today) + 200}px` }}
           />
           {/* Временная шкала */}
-          <div className="sticky top-0 z-10 border-b border-border/60 bg-card/95 backdrop-blur">
+          <div className="sticky top-0 z-10 bg-card border-b">
             <div className="flex flex-col" style={{ paddingLeft: "200px" }}>
               <div className="flex h-10 text-[11px] text-muted-foreground">
                 {timelineDays.map((date, index) => {
@@ -316,8 +316,8 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
                     <div
                       key={index}
                       className={`flex items-center justify-center border-l first:border-l-0 ${
-                        isWeekStart ? "font-semibold text-foreground" : ""
-                      } ${isHoliday ? "bg-red-500/15 text-red-600 dark:text-red-300" : ""}`}
+                        isWeekStart ? "font-medium" : ""
+                      } ${isHoliday ? "bg-red-500/10" : ""}`}
                       style={{ width: `${dayWidth}px` }}
                       title={date.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short" })}
                     >
@@ -334,7 +334,7 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
             {Object.entries(groupedTasks).map(([groupName, groupTasks]) => (
               <div key={groupName}>
                 {groupBy !== "none" && (
-                  <div className="sticky left-0 z-10 border-b border-border/60 bg-muted/80 px-4 py-2 text-sm font-medium backdrop-blur">{groupName}</div>
+                  <div className="sticky left-0 bg-muted px-4 py-2 text-sm font-medium border-b">{groupName}</div>
                 )}
                 {groupTasks.map((task, taskIndex) => {
                   const startPos = getPositionFromDate(new Date(task.startDate!))
@@ -342,8 +342,8 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
                   const width = endPos - startPos + dayWidth
 
                   return (
-                    <div key={task.id} className="group flex h-12 items-center border-b border-border/50 hover:bg-muted/45">
-                      <div className="w-[200px] flex-shrink-0 truncate px-4 text-sm font-medium">{task.title}</div>
+                    <div key={task.id} className="flex items-center border-b h-12 hover:bg-muted/50">
+                      <div className="w-[200px] px-4 text-sm truncate flex-shrink-0">{task.title}</div>
                       <div
                         className="flex-1 relative"
                         style={{
@@ -361,7 +361,7 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
                           ))}
                         </div>
                         <div
-                          className="group absolute top-1/2 z-10 -translate-y-1/2 cursor-move rounded-lg shadow-md ring-1 ring-white/25 transition-transform hover:scale-[1.01]"
+                          className="absolute top-1/2 -translate-y-1/2 rounded cursor-move group z-10"
                           style={{
                             left: `${startPos}px`,
                             width: `${width}px`,
@@ -376,7 +376,7 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
                         >
                           {/* Левый край для изменения размера */}
                           <div
-                            className="absolute bottom-0 left-0 top-0 w-2 cursor-ew-resize rounded-l-lg hover:bg-black/20"
+                            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-black/20"
                             onMouseDown={(e) => {
                               e.stopPropagation()
                               handleMouseDown(task, "resize-left", e)
@@ -385,11 +385,11 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
                           />
 
                           {/* Текст задачи */}
-                          <div className="truncate px-3 text-xs font-medium text-white leading-7">{task.title}</div>
+                          <div className="px-2 text-xs text-white truncate leading-7">{task.title}</div>
 
                           {/* Правый край для изменения размера */}
                           <div
-                            className="absolute bottom-0 right-0 top-0 w-2 cursor-ew-resize rounded-r-lg hover:bg-black/20"
+                            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-black/20"
                             onMouseDown={(e) => {
                               e.stopPropagation()
                               handleMouseDown(task, "resize-right", e)

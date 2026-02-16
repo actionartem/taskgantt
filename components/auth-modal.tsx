@@ -75,9 +75,9 @@ export function AuthModal({
         onInteractOutside={locked ? (e) => e.preventDefault() : undefined}
         onEscapeKeyDown={locked ? (e) => e.preventDefault() : undefined}
       >
-        <DialogHeader className="space-y-1">
+        <DialogHeader>
           <DialogTitle>Добро пожаловать</DialogTitle>
-          <DialogDescription className="leading-relaxed">
+          <DialogDescription>
             Авторизуйтесь, чтобы продолжить работу с системой управления задачами. Если у вас нет аккаунта, можно быстро
             зарегистрироваться.
           </DialogDescription>
@@ -88,13 +88,13 @@ export function AuthModal({
           onValueChange={(value) => setActiveTab(value as "login" | "register")}
           className="mt-4"
         >
-          <TabsList className="grid w-full grid-cols-1 rounded-xl">
+          <TabsList className="grid w-full grid-cols-1">
             <TabsTrigger value="login">Вход</TabsTrigger>
             {/* <TabsTrigger value="register">Регистрация</TabsTrigger> */}
           </TabsList>
 
           <TabsContent value="login" className="mt-6">
-            <form id="auth-login-form" className="space-y-4 rounded-xl border border-border/60 bg-background/40 p-4" onSubmit={handleLoginSubmit}>
+            <form id="auth-login-form" className="space-y-4" onSubmit={handleLoginSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="auth-login-login">Логин</Label>
                 <Input

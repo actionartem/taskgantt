@@ -45,8 +45,8 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   }, [task.assigneeName, task.assigneeId, (task as any).assignee, settings.executors])
 
   return (
-    <div className="interactive-lift group flex items-center gap-3 border-b border-border/50 p-3 hover:bg-muted/45">
-      <div className="w-16 flex-shrink-0 rounded-md bg-muted/55 px-2 py-1 text-center text-xs font-mono text-muted-foreground">{task.id}</div>
+    <div className="flex items-center gap-3 p-3 border-b hover:bg-muted/50 transition-colors">
+      <div className="flex-shrink-0 w-16 text-sm font-mono text-muted-foreground">{task.id}</div>
 
       <div className="flex-1 min-w-0">
         {task.link ? (
@@ -54,7 +54,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
             href={task.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm font-medium hover:underline"
+            className="text-sm font-medium hover:underline inline-flex items-center gap-1"
           >
             {task.title}
             <ExternalLink className="h-3 w-3" />
@@ -68,7 +68,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
         {/* Бейдж статуса — только отображение, кликов нет */}
         <Badge
           style={{ backgroundColor: STATUS_COLORS[task.status], color: "white" }}
-          className="cursor-default select-none shadow-sm"
+          className="cursor-default select-none"
           title="Статус изменяется в режиме редактирования задачи"
           aria-disabled
         >
@@ -76,29 +76,29 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
         </Badge>
 
         {assigneeDisplay ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
             <User className="h-3.5 w-3.5" />
             {assigneeDisplay}
           </span>
         ) : null}
 
         <div
-          className="h-2.5 w-2.5 flex-shrink-0 rounded-full ring-2 ring-background"
+          className="w-2 h-2 rounded-full flex-shrink-0"
           style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}
           title={`Приоритет: ${task.priority}`}
         />
 
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => onEdit(task)}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(task)}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
 
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={handleHideFromGantt}>
-          <EyeOff className={`h-3.5 w-3.5 ${task.hiddenFromGantt ? "text-primary" : "text-muted-foreground"}`} />
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleHideFromGantt}>
+          <EyeOff className={`h-3.5 w-3.5 ${task.hiddenFromGantt ? "text-muted-foreground" : ""}`} />
         </Button>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-destructive">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </AlertDialogTrigger>
