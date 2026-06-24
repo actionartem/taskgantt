@@ -59,8 +59,8 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
 
   return (
     <header className="border-b bg-card">
-      <div className="flex min-h-14 w-full items-center gap-3 px-4 py-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto whitespace-nowrap pr-2 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5">
+      <div className="mx-auto flex min-h-14 w-full max-w-[1520px] flex-wrap items-center justify-center gap-x-2 gap-y-1.5 px-4 py-2">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5">
           {statusOrder.map(({ status, label }) => {
             const isSelected = selectedStatuses.includes(status)
             return (
@@ -91,9 +91,9 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
           })}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex max-w-full shrink-0 flex-wrap items-center justify-center gap-2">
           <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
-            <SelectTrigger className="h-9 w-[180px]">
+            <SelectTrigger className="h-8 w-[170px] max-w-full">
               <SelectValue placeholder="Группировка" />
             </SelectTrigger>
             <SelectContent>
@@ -105,18 +105,18 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
           </Select>
 
           {user?.is_superadmin ? (
-            <Button variant="outline" size="icon" className="h-9 w-9" onClick={onOpenSettings} title="Настройки">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={onOpenSettings} title="Настройки">
               <SettingsIcon className="h-4 w-4" />
             </Button>
           ) : null}
 
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={toggleTheme} title="Тема">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={toggleTheme} title="Тема">
             {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
           </Button>
 
           <Button
             variant="secondary"
-            className="flex h-9 max-w-[220px] items-center gap-2 px-3"
+            className="flex h-8 max-w-[190px] items-center gap-2 px-3"
             onClick={onOpenAuth}
             title={user ? "Профиль" : "Войти"}
           >
