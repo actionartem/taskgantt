@@ -17,6 +17,14 @@ interface GanttChartProps {
 
 type DragPreview = { id: number; startDate: string; endDate: string }
 
+function formatDayLabel(date: Date) {
+  return date.toLocaleDateString("ru-RU", { day: "2-digit" })
+}
+
+function formatMonthLabel(date: Date) {
+  return date.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "")
+}
+
 export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
   const { tasks, updateTask, groupBy, selectedStatuses } = useApp()
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
@@ -339,13 +347,13 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
       <div className="flex-1 overflow-auto" ref={mainScrollRef}>
         <div className="relative min-w-max">
           <div
-            className="absolute top-0 bottom-0 w-px bg-red-500/90 pointer-events-none z-20"
+            className="absolute bottom-0 top-9 z-20 w-px bg-red-500/90 pointer-events-none"
             style={{ left: `${getPositionFromDate(today) + 200}px` }}
           />
           {/* Временная шкала */}
-          <div className="sticky top-0 z-10 bg-card border-b">
+          <div className="sticky top-0 z-40 border-b bg-card shadow-sm">
             <div className="flex flex-col" style={{ paddingLeft: "200px" }}>
-              <div className="flex h-10 text-[11px] text-muted-foreground">
+              <div className="flex h-9 text-muted-foreground">
                 {timelineDays.map((date, index) => {
                   const isWeekStart = date.getDay() === 1
                   const isHoliday = isNonWorkingDay(date)
@@ -353,13 +361,14 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
                   return (
                     <div
                       key={index}
-                      className={`flex items-center justify-center border-l first:border-l-0 ${
-                        isWeekStart ? "font-medium" : ""
+                      className={`flex flex-col items-center justify-center border-l text-center leading-none first:border-l-0 ${
+                        isWeekStart ? "text-blue-600 dark:text-blue-300" : ""
                       } ${isHoliday ? "bg-red-500/10" : ""}`}
                       style={{ width: `${dayWidth}px` }}
                       title={date.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short" })}
                     >
-                      {date.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
+                      <span className="text-xs font-semibold tabular-nums text-foreground">{formatDayLabel(date)}</span>
+                      <span className="mt-0.5 text-[9px] font-medium uppercase">{formatMonthLabel(date)}</span>
                     </div>
                   )
                 })}
