@@ -162,7 +162,11 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
   const handleTagToggle = (tag: string) => {
     setFormData((p) => {
       const set = new Set(p.tags)
-      set.has(tag) ? set.delete(tag) : set.add(tag)
+      if (set.has(tag)) {
+        set.delete(tag)
+      } else {
+        set.add(tag)
+      }
       return { ...p, tags: Array.from(set) }
     })
   }

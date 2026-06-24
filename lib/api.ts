@@ -37,6 +37,11 @@ function clearStoredAuth() {
   window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
 }
 
+function forgetStoredAuth() {
+  if (typeof window === "undefined") return
+  window.localStorage.removeItem("st_user")
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -48,6 +53,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   const res = await fetch(API_BASE + path, {
+    credentials: "include",
     ...options,
     headers,
   })
@@ -212,6 +218,24 @@ export async function requestTelegramLink(login: string) {
   return request<TelegramRequestResponse>("/auth/telegram/request", {
     method: "POST",
     body: JSON.stringify({ login }),
+  })
+}
+
+export async function logout() {
+  try {
+    return await request<{ ok: boolean }>("/auth/logout", { method: "POST" })
+  } finally {
+    forgetStoredAuth()
+  }
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  return request<AuthenticatedUserResponse>("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
   })
 }
 

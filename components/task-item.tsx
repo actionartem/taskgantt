@@ -21,10 +21,11 @@ import { useApp } from "@/contexts/app-context"
 
 interface TaskItemProps {
   task: Task
+  canEdit?: boolean
   onEdit: (task: Task) => void
 }
 
-export function TaskItem({ task, onEdit }: TaskItemProps) {
+export function TaskItem({ task, canEdit = true, onEdit }: TaskItemProps) {
   const { updateTask, deleteTask, settings } = useApp()
 
   const handleHideFromGantt = () => {
@@ -88,33 +89,37 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
           title={`Приоритет: ${task.priority}`}
         />
 
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(task)}>
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleHideFromGantt}>
-          <EyeOff className={`h-3.5 w-3.5 ${task.hiddenFromGantt ? "text-muted-foreground" : ""}`} />
-        </Button>
-
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
-              <Trash2 className="h-3.5 w-3.5" />
+        {canEdit ? (
+          <>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(task)}>
+              <Pencil className="h-3.5 w-3.5" />
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Удалить задачу?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Задача будет удалена из списка и из базы данных.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Нет</AlertDialogCancel>
-              <AlertDialogAction onClick={() => deleteTask(task.id)}>Да</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleHideFromGantt}>
+              <EyeOff className={`h-3.5 w-3.5 ${task.hiddenFromGantt ? "text-muted-foreground" : ""}`} />
+            </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Удалить задачу?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Задача будет удалена из списка и из базы данных.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Нет</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => deleteTask(task.id)}>Да</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        ) : null}
       </div>
     </div>
   )

@@ -12,7 +12,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { updateUser, requestTelegramLink } from "@/lib/api"
+import { updateUser, requestTelegramLink, changePassword } from "@/lib/api"
 import { getMe, type Me } from "@/lib/api"
 
 interface ProfileModalProps {
@@ -25,7 +25,7 @@ interface ProfileModalProps {
     role_text?: string
     telegram_id?: string | null // <-- добавили
   }
-  onUpdated?: (u: { name: string; role_text?: string }) => void
+  onUpdated?: (u: { name: string; role_text?: string; telegram_id?: string | null; token?: string }) => void
   onLogout?: () => void
 }
 
@@ -39,7 +39,12 @@ export function ProfileModal({
   const [name, setName] = useState(user.name)
   const [roleText, setRoleText] = useState(user.role_text || "")
   const [showPassword, setShowPassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordStatus, setPasswordStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [passwordLoading, setPasswordLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Telegram
@@ -53,6 +58,10 @@ export function ProfileModal({
     setName(user.name)
     setRoleText(user.role_text || "")
     setShowPassword(false)
+    setCurrentPassword("")
+    setNewPassword("")
+    setConfirmPassword("")
+    setPasswordStatus(null)
     setTgCode(null)
     setTgLink(null)
     setIsTgLinked(Boolean(user.telegram_id))
@@ -71,6 +80,43 @@ export function ProfileModal({
       setError(e.message || "Не удалось сохранить")
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleChangePassword() {
+    setError(null)
+    setPasswordStatus(null)
+
+    if (!currentPassword || !newPassword) {
+      setError("Введите текущий и новый пароль")
+      return
+    }
+    if (newPassword.length < 8) {
+      setError("Новый пароль должен быть не короче 8 символов")
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Новый пароль и подтверждение не совпадают")
+      return
+    }
+
+    setPasswordLoading(true)
+    try {
+      const updated = await changePassword(currentPassword, newPassword)
+      onUpdated?.({
+        name: updated.name,
+        role_text: updated.role_text ?? undefined,
+        telegram_id: updated.telegram_id ?? null,
+        token: updated.token,
+      })
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      setPasswordStatus("Пароль изменён")
+    } catch (e: any) {
+      setError(e.message || "Не удалось изменить пароль")
+    } finally {
+      setPasswordLoading(false)
     }
   }
 
@@ -149,23 +195,50 @@ export function ProfileModal({
 
           <div className="space-y-2">
             <Label htmlFor="profile-password">Пароль</Label>
-            <div className="relative">
+            <div className="grid gap-2">
+              <div className="relative">
+                <Input
+                  id="profile-password"
+                  type={showPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  autoComplete="current-password"
+                  placeholder="Текущий пароль"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((p) => !p)}
+                  className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
+                  title={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               <Input
-                id="profile-password"
                 type={showPassword ? "text" : "password"}
-                value="********"
-                disabled
-                className="pr-10 bg-muted"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                autoComplete="new-password"
+                placeholder="Новый пароль"
               />
-              <button
+              <Input
+                type={showPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                autoComplete="new-password"
+                placeholder="Повторите новый пароль"
+              />
+              <Button
                 type="button"
-                onClick={() => setShowPassword((p) => !p)}
-                className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
+                variant="outline"
+                onClick={handleChangePassword}
+                disabled={passwordLoading}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+                {passwordLoading ? "Меняю..." : "Изменить пароль"}
+              </Button>
+              {passwordStatus ? <p className="text-xs text-emerald-600">{passwordStatus}</p> : null}
             </div>
-            <p className="text-xs text-muted-foreground">Смену пароля сделаем позже.</p>
           </div>
 
           <div className="space-y-2">

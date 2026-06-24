@@ -11,12 +11,13 @@ import { useApp } from "@/contexts/app-context"
 import { groupTasks } from "@/lib/task-utils"
 
 interface GanttChartProps {
+  canEdit?: boolean
   onEditTask: (task: Task) => void
 }
 
 type DragPreview = { id: number; startDate: string; endDate: string }
 
-export function GanttChart({ onEditTask }: GanttChartProps) {
+export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
   const { tasks, updateTask, groupBy, selectedStatuses } = useApp()
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
   const [dragType, setDragType] = useState<"move" | "resize-left" | "resize-right" | null>(null)
@@ -141,6 +142,7 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
   }, [maxDate, minDate, visibleTasks.length])
 
   const handleMouseDown = (task: Task, type: "move" | "resize-left" | "resize-right", e: React.MouseEvent) => {
+    if (!canEdit) return
     e.preventDefault()
     setDraggedTask(task)
     setDragType(type)
@@ -227,7 +229,7 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
         document.removeEventListener("mouseup", handleMouseUp)
       }
     }
-  }, [draggedTask, dragType, dragStartX, dragStartDate, dragStartEndDate, dayWidth, updateTask])
+  }, [canEdit, draggedTask, dragType, dragStartX, dragStartDate, dragStartEndDate, dayWidth, updateTask])
 
   const timelineDays = useMemo(() => {
     return Array.from({ length: totalDays + 1 }, (_, index) => {
@@ -397,7 +399,9 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
                           ))}
                         </div>
                         <div
-                          className="absolute top-1/2 -translate-y-1/2 rounded cursor-move group z-10"
+                          className={`absolute top-1/2 -translate-y-1/2 rounded group z-10 ${
+                            canEdit ? "cursor-move" : "cursor-default"
+                          }`}
                           style={{
                             left: `${startPos}px`,
                             width: `${width}px`,
@@ -407,31 +411,35 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
                           onMouseDown={(e) => handleMouseDown(task, "move", e)}
                           onClick={(e) => {
                             e.stopPropagation()
-                            onEditTask(task)
+                            if (canEdit) onEditTask(task)
                           }}
                         >
                           {/* Левый край для изменения размера */}
-                          <div
-                            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-black/20"
-                            onMouseDown={(e) => {
-                              e.stopPropagation()
-                              handleMouseDown(task, "resize-left", e)
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
+                          {canEdit ? (
+                            <div
+                              className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-black/20"
+                              onMouseDown={(e) => {
+                                e.stopPropagation()
+                                handleMouseDown(task, "resize-left", e)
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : null}
 
                           {/* Текст задачи */}
                           <div className="px-2 text-xs text-white truncate leading-7">{task.title}</div>
 
                           {/* Правый край для изменения размера */}
-                          <div
-                            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-black/20"
-                            onMouseDown={(e) => {
-                              e.stopPropagation()
-                              handleMouseDown(task, "resize-right", e)
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
+                          {canEdit ? (
+                            <div
+                              className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-black/20"
+                              onMouseDown={(e) => {
+                                e.stopPropagation()
+                                handleMouseDown(task, "resize-right", e)
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : null}
                         </div>
                       </div>
                     </div>

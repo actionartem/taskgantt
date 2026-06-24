@@ -11,7 +11,7 @@ import { Settings } from "@/components/settings"
 import { AuthModal } from "@/components/auth-modal"
 import { ProfileModal } from "@/components/profile-modal"
 import type { Task } from "@/lib/types"
-import { loginPassword, registerPassword } from "@/lib/api"
+import { loginPassword, logout, registerPassword } from "@/lib/api"
 import { useApp } from "@/contexts/app-context"
 
 interface AuthenticatedUser {
@@ -22,6 +22,14 @@ interface AuthenticatedUser {
   telegram_id?: string | null
   is_superadmin?: boolean
   token?: string
+}
+
+function isReadOnlyUser(user: AuthenticatedUser | null) {
+  if (!user || user.is_superadmin) return false
+  const role = String(user.role_text || "").toLowerCase()
+  return ["viewer", "read-only", "readonly", "только чтение", "просмотр", "наблюдатель"].some((marker) =>
+    role.includes(marker),
+  )
 }
 
 export default function HomePage() {
@@ -111,11 +119,13 @@ export default function HomePage() {
   }
 
   const handleCreateTask = () => {
+    if (isReadOnlyUser(currentUser)) return
     setEditingTask(undefined)
     setShowTaskForm(true)
   }
 
   const handleEditTask = (task: Task) => {
+    if (isReadOnlyUser(currentUser)) return
     setEditingTask(task)
     setShowTaskForm(true)
   }
@@ -183,8 +193,9 @@ export default function HomePage() {
     }
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setAuthError(null)
+    await logout().catch((e) => console.error("logout failed:", e))
     if (typeof window !== "undefined") {
       localStorage.removeItem("st_user")
     }
@@ -242,7 +253,11 @@ export default function HomePage() {
                   className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
                   style={{ flexBasis: `${leftWidth}%` }}
                 >
-                  <TaskList onCreateTask={handleCreateTask} onEditTask={handleEditTask} />
+                  <TaskList
+                    canEdit={!isReadOnlyUser(currentUser)}
+                    onCreateTask={handleCreateTask}
+                    onEditTask={handleEditTask}
+                  />
                 </div>
                 <div
                   className="mx-4 flex w-1 cursor-col-resize items-stretch"
@@ -255,7 +270,7 @@ export default function HomePage() {
                   className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
                   style={{ flexBasis: `${100 - leftWidth}%` }}
                 >
-                  <GanttChart onEditTask={handleEditTask} />
+                  <GanttChart canEdit={!isReadOnlyUser(currentUser)} onEditTask={handleEditTask} />
                 </div>
               </div>
             </div>

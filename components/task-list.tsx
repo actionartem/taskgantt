@@ -11,11 +11,12 @@ import { useApp } from "@/contexts/app-context"
 import { filterTasks, groupTasks } from "@/lib/task-utils"
 
 interface TaskListProps {
+  canEdit?: boolean
   onCreateTask: () => void
   onEditTask: (task: Task) => void
 }
 
-export const TaskList: React.FC<TaskListProps> = ({ onCreateTask, onEditTask }) => {
+export const TaskList: React.FC<TaskListProps> = ({ canEdit = true, onCreateTask, onEditTask }) => {
   const { tasks, groupBy } = useApp()
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<TaskStatus | "Все">("Все")
@@ -45,10 +46,12 @@ export const TaskList: React.FC<TaskListProps> = ({ onCreateTask, onEditTask }) 
     <Card className="relative flex flex-col h-full overflow-hidden">
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-lg font-semibold">Список задач</h2>
-        <Button onClick={onCreateTask} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Создать задачу
-        </Button>
+        {canEdit ? (
+          <Button onClick={onCreateTask} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            Создать задачу
+          </Button>
+        ) : null}
       </div>
 
       <TaskFilters
@@ -75,7 +78,9 @@ export const TaskList: React.FC<TaskListProps> = ({ onCreateTask, onEditTask }) 
               {groupTasksList.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">Задачи не найдены</div>
               ) : (
-                groupTasksList.map((task) => <TaskItem key={task.id} task={task} onEdit={onEditTask} />)
+                groupTasksList.map((task) => (
+                  <TaskItem key={task.id} canEdit={canEdit} task={task} onEdit={onEditTask} />
+                ))
               )}
             </div>
           ))}
