@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useMemo, useState, useRef, useEffect } from "react"
+import { memo, useMemo, useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import type { Task } from "@/lib/types"
@@ -25,7 +25,7 @@ function formatMonthLabel(date: Date) {
   return date.toLocaleDateString("ru-RU", { month: "short" }).replace(".", "")
 }
 
-export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
+function GanttChartComponent({ canEdit = true, onEditTask }: GanttChartProps) {
   const { tasks, updateTask, groupBy, selectedStatuses } = useApp()
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
   const [dragType, setDragType] = useState<"move" | "resize-left" | "resize-right" | null>(null)
@@ -338,7 +338,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
             style={{ left: `${getPositionFromDate(today) + 200}px` }}
           />
           {/* Временная шкала */}
-          <div className="sticky top-0 z-40 border-b bg-card/95 shadow-sm backdrop-blur">
+          <div className="sticky top-0 z-40 border-b bg-card/95 shadow-sm">
             <div className="flex flex-col" style={{ paddingLeft: "200px" }}>
               <div className="flex h-9 text-muted-foreground">
                 {timelineDays.map((date, index) => {
@@ -395,7 +395,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
                           ))}
                         </div>
                         <div
-                          className={`group absolute top-1/2 z-10 -translate-y-1/2 rounded-md shadow-md transition-[filter,box-shadow,transform] duration-200 hover:brightness-105 hover:shadow-lg ${
+                          className={`group absolute top-1/2 z-10 -translate-y-1/2 rounded-md shadow-sm transition-shadow duration-150 hover:shadow-md ${
                             canEdit ? "cursor-move" : "cursor-default"
                           }`}
                           style={{
@@ -449,3 +449,5 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
     </Card>
   )
 }
+
+export const GanttChart = memo(GanttChartComponent)

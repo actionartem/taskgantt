@@ -16,7 +16,7 @@ interface TaskListProps {
   onEditTask: (task: Task) => void
 }
 
-export const TaskList: React.FC<TaskListProps> = ({ canEdit = true, onCreateTask, onEditTask }) => {
+const TaskListComponent: React.FC<TaskListProps> = ({ canEdit = true, onCreateTask, onEditTask }) => {
   const { tasks, groupBy } = useApp()
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<TaskStatus | "Все">("Все")
@@ -90,4 +90,6 @@ export const TaskList: React.FC<TaskListProps> = ({ canEdit = true, onCreateTask
 }
 
 // На будущее: если где-то подключат как default — тоже будет работать.
+export const TaskList = React.memo(TaskListComponent)
+
 export default TaskList

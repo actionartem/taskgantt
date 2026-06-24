@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { Moon, SettingsIcon, Sun, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -20,7 +21,7 @@ interface HeaderProps {
   } | null
 }
 
-export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
+export const Header = memo(function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
   const {
     tasks,
     theme,
@@ -137,4 +138,4 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
       </div>
     </header>
   )
-}
+})

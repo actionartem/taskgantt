@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import type React from "react"
 import { Clock3, ExternalLink, Pencil, TimerReset, User } from "lucide-react"
 
@@ -70,18 +70,19 @@ function compareCompletedByDeltaDesc(a: Task, b: Task) {
   return a.id - b.id
 }
 
-function TaskRow({
+const TaskRow = memo(function TaskRow({
   task,
   variant,
+  settings,
   canEdit = true,
   onEditTask,
 }: {
   task: Task
   variant: "analytics" | "development" | "done"
+  settings: ReturnType<typeof useApp>["settings"]
   canEdit?: boolean
   onEditTask: (task: Task) => void
 }) {
-  const { settings } = useApp()
   const assignee = getAssignee(task, settings)
   const approvedHours = getHours(task.approvedHours)
   const spentHours = getHours(task.spentHours)
@@ -167,7 +168,7 @@ function TaskRow({
       ) : null}
     </article>
   )
-}
+})
 
 function TaskColumn({
   title,
@@ -199,8 +200,8 @@ function TaskColumn({
   )
 }
 
-export function TaskHoursBoard({ canEdit = true, onEditTask }: TaskHoursBoardProps) {
-  const { tasks } = useApp()
+export const TaskHoursBoard = memo(function TaskHoursBoard({ canEdit = true, onEditTask }: TaskHoursBoardProps) {
+  const { tasks, settings } = useApp()
 
   const { analyticsTasks, developmentTasks, doneTasks } = useMemo(() => {
     const analytics = tasks
@@ -241,6 +242,7 @@ export function TaskHoursBoard({ canEdit = true, onEditTask }: TaskHoursBoardPro
               key={task.id}
               task={task}
               variant="analytics"
+              settings={settings}
               canEdit={canEdit}
               onEditTask={onEditTask}
             />
@@ -253,6 +255,7 @@ export function TaskHoursBoard({ canEdit = true, onEditTask }: TaskHoursBoardPro
               key={task.id}
               task={task}
               variant="development"
+              settings={settings}
               canEdit={canEdit}
               onEditTask={onEditTask}
             />
@@ -265,6 +268,7 @@ export function TaskHoursBoard({ canEdit = true, onEditTask }: TaskHoursBoardPro
               key={task.id}
               task={task}
               variant="done"
+              settings={settings}
               canEdit={canEdit}
               onEditTask={onEditTask}
             />
@@ -273,4 +277,4 @@ export function TaskHoursBoard({ canEdit = true, onEditTask }: TaskHoursBoardPro
       </div>
     </section>
   )
-}
+})

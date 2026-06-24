@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { Pencil, Trash2, EyeOff, ExternalLink, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -25,7 +25,7 @@ interface TaskItemProps {
   onEdit: (task: Task) => void
 }
 
-export function TaskItem({ task, canEdit = true, onEdit }: TaskItemProps) {
+function TaskItemComponent({ task, canEdit = true, onEdit }: TaskItemProps) {
   const { updateTask, deleteTask, settings } = useApp()
 
   const handleHideFromGantt = () => {
@@ -124,4 +124,6 @@ export function TaskItem({ task, canEdit = true, onEdit }: TaskItemProps) {
     </div>
   )
 }
+
+export const TaskItem = memo(TaskItemComponent)
 

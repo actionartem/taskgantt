@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from "react"
 
 import { Header } from "@/components/header"
@@ -119,22 +119,22 @@ export default function HomePage() {
     setIsResizing(true)
   }
 
-  const handleCreateTask = () => {
+  const handleCreateTask = useCallback(() => {
     if (isReadOnlyUser(currentUser)) return
     setEditingTask(undefined)
     setShowTaskForm(true)
-  }
+  }, [currentUser])
 
-  const handleEditTask = (task: Task) => {
+  const handleEditTask = useCallback((task: Task) => {
     if (isReadOnlyUser(currentUser)) return
     setEditingTask(task)
     setShowTaskForm(true)
-  }
+  }, [currentUser])
 
-  const handleCloseTaskForm = () => {
+  const handleCloseTaskForm = useCallback(() => {
     setShowTaskForm(false)
     setEditingTask(undefined)
-  }
+  }, [])
 
   // ЛОГИН
   const handleLogin = async ({ login, password }: { login: string; password: string }) => {
@@ -228,17 +228,21 @@ export default function HomePage() {
   }, [clearTasksState])
 
   // КНОПКА В ХЕДЕРЕ
-  const handleHeaderUserClick = () => {
+  const handleHeaderUserClick = useCallback(() => {
     if (!currentUser) setIsAuthModalOpen(true)
     else setIsProfileModalOpen(true)
-  }
+  }, [currentUser])
+
+  const handleOpenSettings = useCallback(() => {
+    setShowSettings(true)
+  }, [])
 
   return (
     <div className="app-shell">
       {currentUser ? (
         <>
           <Header
-            onOpenSettings={() => setShowSettings(true)}
+            onOpenSettings={handleOpenSettings}
             onOpenAuth={handleHeaderUserClick}
             user={currentUser}
           />
@@ -265,7 +269,7 @@ export default function HomePage() {
                   onMouseDown={startResizing}
                   onTouchStart={startResizing}
                 >
-                  <div className="h-full w-full rounded bg-border/70 transition-all hover:bg-primary/45 hover:shadow-md" />
+                  <div className="h-full w-full rounded bg-border/70 transition-colors hover:bg-primary/45" />
                 </div>
                 <div
                   className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
