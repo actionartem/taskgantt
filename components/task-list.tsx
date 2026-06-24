@@ -43,7 +43,7 @@ export const TaskList: React.FC<TaskListProps> = ({ canEdit = true, onCreateTask
   const groupedTasks = groupTasks(filteredTasks, groupBy)
 
   return (
-    <Card className="relative flex flex-col h-full overflow-hidden">
+    <Card className="relative flex h-full flex-col gap-0 overflow-hidden py-0">
       <div className="flex min-h-9 items-center justify-between gap-3 border-b px-3 py-1">
         <h2 className="text-sm font-semibold">Список задач</h2>
         {canEdit ? (

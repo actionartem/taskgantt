@@ -310,7 +310,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
 
   if (visibleTasks.length === 0) {
     return (
-      <Card className="flex flex-col h-full">
+      <Card className="flex h-full flex-col gap-0 py-0">
         <div className="flex min-h-9 items-center border-b px-3 py-1">
           <h2 className="text-sm font-semibold">Диаграмма Ганта</h2>
         </div>
@@ -322,7 +322,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
   }
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden">
+    <Card className="flex h-full flex-col gap-0 overflow-hidden py-0">
       <div className="flex min-h-9 items-center justify-between gap-3 border-b px-3 py-1">
         <h2 className="text-sm font-semibold">Диаграмма Ганта</h2>
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={handleScrollToToday}>
@@ -331,7 +331,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
       </div>
 
       <div className="border-b">
-        <div ref={topScrollRef} className="h-4 overflow-x-auto">
+        <div ref={topScrollRef} className="h-2 overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5">
           <div style={{ width: `${chartWidth}px`, height: "1px" }} />
         </div>
       </div>
