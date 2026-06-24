@@ -10,7 +10,6 @@ import { GanttChart } from "@/components/gantt-chart"
 import { Settings } from "@/components/settings"
 import { AuthModal } from "@/components/auth-modal"
 import { ProfileModal } from "@/components/profile-modal"
-import { TaskHistorySection } from "@/components/task-history-section"
 import type { Task } from "@/lib/types"
 import { loginPassword, registerPassword } from "@/lib/api"
 
@@ -219,9 +218,6 @@ export default function HomePage() {
               >
                 <GanttChart onEditTask={handleEditTask} />
               </div>
-            </div>
-            <div className="h-[65vh] min-h-[600px]">
-              <TaskHistorySection />
             </div>
           </div>
         </main>
