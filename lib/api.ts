@@ -196,6 +196,29 @@ export type ApiUser = {
   is_superadmin?: boolean
 }
 
+export type TaskExportField =
+  | "id"
+  | "title"
+  | "status"
+  | "priority"
+  | "assignee"
+  | "approved_hours"
+  | "spent_hours"
+  | "link_url"
+  | "start_at"
+  | "due_at"
+  | "tags"
+  | "description"
+
+export type TaskExportJob = {
+  id: string
+  status: "queued" | "running" | "done" | "error"
+  progress: number
+  fileName: string | null
+  downloadUrl: string | null
+  error: string | null
+}
+
 /* ===================== AUTH ===================== */
 
 export async function loginPassword(login: string, password: string) {
@@ -248,6 +271,44 @@ export async function changePassword(currentPassword: string, newPassword: strin
       new_password: newPassword,
     }),
   })
+}
+
+/* ===================== EXPORTS ===================== */
+
+export async function startTaskExport(payload: {
+  statuses: Task["status"][]
+  fields: TaskExportField[]
+}) {
+  return request<TaskExportJob>("/exports/tasks", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function getTaskExportJob(jobId: string) {
+  return request<TaskExportJob>(`/exports/tasks/${encodeURIComponent(jobId)}`)
+}
+
+export async function downloadTaskExport(jobId: string, fallbackFileName?: string | null) {
+  const headers: Record<string, string> = {}
+  const token = getStoredAuthToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch(`${API_BASE}/exports/tasks/${encodeURIComponent(jobId)}/download`, {
+    credentials: "include",
+    headers,
+  })
+
+  if (!res.ok) {
+    if (res.status === 401) clearStoredAuth()
+    throw new Error("Произошла ошибка выгрузки, повторите еще раз")
+  }
+
+  const blob = await res.blob()
+  return {
+    blob,
+    fileName: fallbackFileName || `simpletracker-tasks-${jobId.slice(0, 8)}.xlsx`,
+  }
 }
 
 /* ===================== USERS ===================== */

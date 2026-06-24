@@ -8,6 +8,7 @@ import { TaskList } from "@/components/task-list"
 import { TaskForm } from "@/components/task-form"
 import { GanttChart } from "@/components/gantt-chart"
 import { TaskHoursBoard } from "@/components/task-hours-board"
+import { TaskExportModal } from "@/components/task-export-modal"
 import { Settings } from "@/components/settings"
 import { AuthModal } from "@/components/auth-modal"
 import { ProfileModal } from "@/components/profile-modal"
@@ -38,6 +39,7 @@ export default function HomePage() {
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined)
   const [showSettings, setShowSettings] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
@@ -237,6 +239,10 @@ export default function HomePage() {
     setShowSettings(true)
   }, [])
 
+  const handleOpenExport = useCallback(() => {
+    setShowExportModal(true)
+  }, [])
+
   return (
     <div className="app-shell">
       {currentUser ? (
@@ -244,6 +250,7 @@ export default function HomePage() {
           <Header
             onOpenSettings={handleOpenSettings}
             onOpenAuth={handleHeaderUserClick}
+            onOpenExport={handleOpenExport}
             user={currentUser}
           />
 
@@ -288,6 +295,7 @@ export default function HomePage() {
           </footer>
 
           <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />
+          <TaskExportModal open={showExportModal} onOpenChange={setShowExportModal} />
           <Settings open={showSettings} onClose={() => setShowSettings(false)} />
         </>
       ) : authError ? (

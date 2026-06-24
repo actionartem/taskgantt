@@ -1,7 +1,7 @@
 "use client"
 
 import { memo } from "react"
-import { Moon, SettingsIcon, Sun, User } from "lucide-react"
+import { Download, Moon, SettingsIcon, Sun, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useApp } from "@/contexts/app-context"
@@ -11,6 +11,7 @@ import type { GroupBy, TaskStatus } from "@/lib/types"
 interface HeaderProps {
   onOpenSettings: () => void
   onOpenAuth: () => void // используем и для входа, и для профиля
+  onOpenExport: () => void
   user?: {
     id?: number
     name: string
@@ -21,7 +22,7 @@ interface HeaderProps {
   } | null
 }
 
-export const Header = memo(function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
+export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenExport, user }: HeaderProps) {
   const {
     tasks,
     theme,
@@ -114,6 +115,11 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, user }:
               <SelectItem value="priority">По приоритету</SelectItem>
             </SelectContent>
           </Select>
+
+          <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs" onClick={onOpenExport}>
+            <Download className="h-4 w-4" />
+            <span className="hidden whitespace-nowrap sm:inline">Выгрузить EXEL</span>
+          </Button>
 
           {user?.is_superadmin ? (
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={onOpenSettings} title="Настройки">
