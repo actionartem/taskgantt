@@ -3,8 +3,8 @@
 import { Moon, SettingsIcon, Sun, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/contexts/app-context"
+import { cn } from "@/lib/utils"
 import type { GroupBy, TaskStatus } from "@/lib/types"
 
 interface HeaderProps {
@@ -59,77 +59,70 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
 
   return (
     <header className="border-b bg-card">
-      <div className="container mx-auto px-4 py-3">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">Миноры</h1>
-          </div>
-
-          <div className="flex items-center gap-2">
-
-            <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Группировка" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Без группировки</SelectItem>
-                <SelectItem value="assignee">По исполнителю</SelectItem>
-                <SelectItem value="status">По статусу</SelectItem>
-                <SelectItem value="priority">По приоритету</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {user?.is_superadmin ? (
-              <Button variant="outline" size="icon" onClick={onOpenSettings}>
-                <SettingsIcon className="h-5 w-5" />
-              </Button>
-            ) : null}
-
-            <Button variant="outline" size="icon" onClick={toggleTheme}>
-              {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-            </Button>
-
-            <Button
-              variant="secondary"
-              className="flex items-center gap-2 px-3"
-              onClick={onOpenAuth}
-              title={user ? "Профиль" : "Войти"}
-            >
-              <User className="h-4 w-4" />
-              <span className="whitespace-nowrap text-sm font-medium">
-                {user?.name ?? "Войти"}
-              </span>
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge variant="secondary" className="px-4 py-2 select-none">
-            <span className="font-semibold">Всего задач:</span>
-            <span className="ml-2 font-bold">{tasks.length}</span>
-          </Badge>
-
+      <div className="flex min-h-14 w-full items-center gap-3 px-4 py-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto whitespace-nowrap pr-2 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5">
           {statusOrder.map(({ status, label }) => {
             const isSelected = selectedStatuses.includes(status)
             return (
-              <Badge
+              <button
                 key={status}
-                asChild
-                variant={isSelected ? "default" : "secondary"}
-                className="px-4 py-2 cursor-pointer select-none"
+                type="button"
+                onClick={() => toggleSelectedStatus(status)}
+                className={cn(
+                  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+                  isSelected
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border bg-muted/60 text-foreground hover:bg-muted",
+                )}
+                aria-pressed={isSelected}
+                title={`${label}: ${statusCounts[status]}`}
               >
-                <button
-                  type="button"
-                  onClick={() => toggleSelectedStatus(status)}
-                  className="flex items-center gap-2"
-                  aria-pressed={isSelected}
+                <span>{label}</span>
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-[11px] font-semibold leading-none",
+                    isSelected ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background text-muted-foreground",
+                  )}
                 >
-                  <span>{label}:</span>
-                  <span className="font-bold">{statusCounts[status]}</span>
-                </button>
-              </Badge>
+                  {statusCounts[status]}
+                </span>
+              </button>
             )
           })}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
+            <SelectTrigger className="h-9 w-[180px]">
+              <SelectValue placeholder="Группировка" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Без группировки</SelectItem>
+              <SelectItem value="assignee">По исполнителю</SelectItem>
+              <SelectItem value="status">По статусу</SelectItem>
+              <SelectItem value="priority">По приоритету</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {user?.is_superadmin ? (
+            <Button variant="outline" size="icon" className="h-9 w-9" onClick={onOpenSettings} title="Настройки">
+              <SettingsIcon className="h-4 w-4" />
+            </Button>
+          ) : null}
+
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={toggleTheme} title="Тема">
+            {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </Button>
+
+          <Button
+            variant="secondary"
+            className="flex h-9 max-w-[220px] items-center gap-2 px-3"
+            onClick={onOpenAuth}
+            title={user ? "Профиль" : "Войти"}
+          >
+            <User className="h-4 w-4" />
+            <span className="truncate whitespace-nowrap text-sm font-medium">{user?.name ?? "Войти"}</span>
+          </Button>
         </div>
       </div>
     </header>
