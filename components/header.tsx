@@ -62,12 +62,6 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
       <div className="container mx-auto px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button asChild className="bg-sky-200 text-sky-900 hover:bg-sky-300">
-              <a href="https://risk.simpletracker.ru/" target="_blank" rel="noopener noreferrer">
-                Планирование ресурсов команды разработки
-              </a>
-            </Button>
-
             <h1 className="text-2xl font-bold">Миноры</h1>
           </div>
 
@@ -136,10 +130,6 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
               </Badge>
             )
           })}
-
-          <span className="text-sm text-muted-foreground">
-            Нажмите статус, чтобы скрыть или показать задачи по выбранным статусам
-          </span>
         </div>
       </div>
     </header>
