@@ -1,22 +1,16 @@
-name: Deploy Next.js to GitHub Pages
+name: Deploy frontend
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  group: frontend-production
+  cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,23 +25,36 @@ jobs:
         run: npm install -g pnpm
 
       - name: Install deps
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile --config.dangerously-allow-all-builds=true
 
-      - name: Build & Export
+      - name: Build static frontend
+        env:
+          NEXT_PUBLIC_API_BASE: https://api.simpletracker.ru
         run: pnpm run build:pages
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./out
+      - name: Pack artifact
+        run: tar -czf simpletracker-frontend.tar.gz -C out .
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" -o StrictHostKeyChecking=accept-new "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p /var/www/simpletracker/releases"
+          scp -i ~/.ssh/deploy_key -P "$DEPLOY_PORT" simpletracker-frontend.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/tmp/simpletracker-frontend-${GITHUB_SHA}.tar.gz"
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "GITHUB_SHA=$GITHUB_SHA bash -s" <<'SSH'
+            set -euo pipefail
+            release="/var/www/simpletracker/releases/${GITHUB_SHA}"
+            mkdir -p "$release"
+            tar -xzf "/tmp/simpletracker-frontend-${GITHUB_SHA}.tar.gz" -C "$release"
+            ln -sfn "$release" /var/www/simpletracker/current
+            rm -f "/tmp/simpletracker-frontend-${GITHUB_SHA}.tar.gz"
+            nginx -t
+            systemctl reload nginx
+          SSH
