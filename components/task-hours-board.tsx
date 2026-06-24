@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import type React from "react"
-import { Clock3, ExternalLink, Pencil, TimerReset, TrendingUp, User } from "lucide-react"
+import { Clock3, ExternalLink, Pencil, TimerReset, User } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -45,12 +45,6 @@ function getDelta(task: Task) {
   return spent - approved
 }
 
-function formatDelta(value: number | null) {
-  if (value == null) return "—"
-  const prefix = value > 0 ? "+" : ""
-  return `${prefix}${HOURS_FORMATTER.format(value)} ч`
-}
-
 function getAssignee(task: Task, settings: ReturnType<typeof useApp>["settings"]) {
   if (task.assigneeName?.trim()) return task.assigneeName
   if (task.assigneeId != null) {
@@ -77,13 +71,6 @@ function compareCompletedByDeltaDesc(a: Task, b: Task) {
   return a.id - b.id
 }
 
-function getDeltaTone(value: number | null) {
-  if (value == null) return "text-muted-foreground"
-  if (value > 0) return "text-red-600 dark:text-red-400"
-  if (value < 0) return "text-emerald-600 dark:text-emerald-400"
-  return "text-muted-foreground"
-}
-
 function TaskCard({
   task,
   variant,
@@ -101,7 +88,6 @@ function TaskCard({
   const assignee = getAssignee(task, settings)
   const approvedHours = getHours(task.approvedHours)
   const spentHours = getHours(task.spentHours)
-  const delta = getDelta(task)
   const approvedPercent =
     approvedHours != null && maxApprovedHours > 0
       ? Math.max(6, Math.min(100, (approvedHours / maxApprovedHours) * 100))
@@ -175,7 +161,7 @@ function TaskCard({
       ) : null}
 
       {variant === "done" ? (
-        <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <div className="rounded-md border bg-muted/30 p-2">
             <div className="flex items-center gap-1 text-muted-foreground">
               <Clock3 className="h-3.5 w-3.5" />
@@ -189,13 +175,6 @@ function TaskCard({
               Затрачено
             </div>
             <div className="mt-1 font-semibold">{formatHours(spentHours)}</div>
-          </div>
-          <div className="rounded-md border bg-muted/30 p-2">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <TrendingUp className="h-3.5 w-3.5" />
-              Разница
-            </div>
-            <div className={`mt-1 font-semibold ${getDeltaTone(delta)}`}>{formatDelta(delta)}</div>
           </div>
         </div>
       ) : null}
