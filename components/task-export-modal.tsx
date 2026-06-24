@@ -175,7 +175,7 @@ export function TaskExportModal({ open, onOpenChange }: TaskExportModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+      <DialogContent className="max-h-[92vh] w-[96vw] max-w-[96vw] overflow-y-auto sm:max-w-[1100px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
@@ -183,7 +183,7 @@ export function TaskExportModal({ open, onOpenChange }: TaskExportModalProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(360px,0.95fr)_minmax(420px,1.05fr)]">
           <section className="rounded-lg border bg-muted/20">
             <div className="flex items-center justify-between border-b px-3 py-2">
               <h3 className="text-sm font-semibold">Статус</h3>
@@ -214,22 +214,23 @@ export function TaskExportModal({ open, onOpenChange }: TaskExportModalProps) {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-1 p-3">
+            <div className="grid gap-1.5 p-3">
               {EXPORT_STATUSES.map((status) => (
                 <label
                   key={status}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent/45"
+                  className="flex min-h-9 cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent/45"
                 >
                   <Checkbox
+                    className="mt-0.5"
                     checked={selectedStatuses.includes(status)}
                     onCheckedChange={() => handleStatusChange(status)}
                   />
                   <span
-                    className="h-2.5 w-2.5 rounded-full"
+                    className="mt-1.5 h-2.5 w-2.5 flex-none rounded-full"
                     style={{ backgroundColor: STATUS_COLORS[status] }}
                   />
-                  <span className="min-w-0 flex-1 truncate">{status}</span>
-                  <span className="rounded bg-background px-1.5 py-0.5 text-xs text-muted-foreground">
+                  <span className="min-w-0 flex-1 break-words leading-snug">{status}</span>
+                  <span className="flex-none rounded bg-background px-1.5 py-0.5 text-xs text-muted-foreground">
                     {statusCounts[status] || 0}
                   </span>
                 </label>
@@ -267,17 +268,18 @@ export function TaskExportModal({ open, onOpenChange }: TaskExportModalProps) {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-1 p-3 sm:grid-cols-2">
+            <div className="grid gap-1.5 p-3 md:grid-cols-2">
               {EXPORT_FIELDS.map((field) => (
                 <label
                   key={field.key}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent/45"
+                  className="flex min-h-9 cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent/45"
                 >
                   <Checkbox
+                    className="mt-0.5"
                     checked={selectedFields.includes(field.key)}
                     onCheckedChange={() => handleFieldChange(field.key)}
                   />
-                  <span className="min-w-0 truncate">{field.label}</span>
+                  <span className="min-w-0 break-words leading-snug">{field.label}</span>
                 </label>
               ))}
             </div>
