@@ -17,13 +17,45 @@ import {
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ||
   "https://api.simpletracker.ru").replace(/\/$/, "")
 
+const AUTH_EXPIRED_EVENT = "simpletracker:auth-expired"
+
+function getStoredAuthToken(): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.localStorage.getItem("st_user")
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return typeof parsed?.token === "string" && parsed.token ? parsed.token : null
+  } catch {
+    return null
+  }
+}
+
+function clearStoredAuth() {
+  if (typeof window === "undefined") return
+  window.localStorage.removeItem("st_user")
+  window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string> | undefined),
+  }
+  const token = getStoredAuthToken()
+  if (token && !headers.Authorization) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
   const res = await fetch(API_BASE + path, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
+    headers,
   })
 
   if (!res.ok) {
+    if (res.status === 401 && !path.startsWith("/auth/")) {
+      clearStoredAuth()
+    }
     let message = `API error ${res.status}`
     try {
       const data = await res.json()
@@ -126,6 +158,10 @@ export type Me = {
   is_superadmin?: boolean
 }
 
+export type AuthenticatedUserResponse = Me & {
+  token: string
+}
+
 export type TelegramRequestResponse = {
   ok: boolean
   user_id: string
@@ -146,14 +182,7 @@ export type ApiUser = {
 /* ===================== AUTH ===================== */
 
 export async function loginPassword(login: string, password: string) {
-  return request<{
-    id: number
-    login: string
-    name: string
-    role_text?: string
-    telegram_id?: string | null
-    is_superadmin?: boolean
-  }>("/auth/login-password", {
+  return request<AuthenticatedUserResponse>("/auth/login-password", {
     method: "POST",
     body: JSON.stringify({ login, password }),
   })
@@ -165,21 +194,14 @@ export async function registerPassword(
   password: string,
   roleText = "",
 ) {
-  return request<{
-    id: number
-    login: string
-    name: string
-    role_text?: string
-    telegram_id?: string | null
-    is_superadmin?: boolean
-  }>("/auth/register-password", {
+  return request<AuthenticatedUserResponse>("/auth/register-password", {
     method: "POST",
     body: JSON.stringify({ name, login, password, role_text: roleText }),
   })
 }
 
-export async function getMe(userId: number | string) {
-  return request<Me>(`/me?user_id=${userId}`)
+export async function getMe(userId?: number | string) {
+  return request<Me>(`/me${userId ? `?user_id=${userId}` : ""}`)
 }
 
 export async function getTaskHistory(taskId: number | string) {
@@ -214,6 +236,10 @@ export async function updateUser(
     method: "PATCH",
     body: JSON.stringify(payload),
   })
+}
+
+export async function deleteUser(id: number | string) {
+  return request<{}>(`/users/${id}`, { method: "DELETE" })
 }
 
 /* ===================== TASKS (НОВЫЕ ЧИСТЫЕ ФУНКЦИИ) ===================== */

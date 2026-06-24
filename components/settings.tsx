@@ -12,7 +12,7 @@ import type { Executor } from "@/lib/types"
 import { useApp } from "@/contexts/app-context"
 
 // API: пользователи
-import { API_BASE, getUsers, createUser, updateUser } from "@/lib/api"
+import { getUsers, createUser, updateUser, deleteUser } from "@/lib/api"
 // API: теги
 import { getBoardTags, createBoardTag, deleteBoardTag } from "@/lib/api"
 
@@ -36,25 +36,6 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [loading, setLoading] = useState(false)
   const [listLoading, setListLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // --- helpers ---
-  async function deleteUserApi(id: number | string) {
-    const res = await fetch(`${API_BASE}/users/${id}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-    })
-    if (!res.ok) {
-      let msg = `Delete failed: ${res.status}`
-      try {
-        const data = await res.json()
-        if ((data as any)?.error) msg = (data as any).error
-      } catch {
-        const t = await res.text()
-        if (t) msg = t
-      }
-      throw new Error(msg)
-    }
-  }
 
   // Загрузка пользователей и тегов при открытии
   useEffect(() => {
@@ -134,7 +115,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     setLoading(true)
     setError(null)
     try {
-      await deleteUserApi(id)
+      await deleteUser(id)
       setSettings((prev) => ({ ...prev, executors: prev.executors.filter((exec) => exec.id !== id) }))
     } catch (e: any) {
       setError(e?.message || "Не удалось удалить исполнителя")

@@ -19,6 +19,9 @@ interface AuthenticatedUser {
   login: string
   name: string
   role_text?: string
+  telegram_id?: string | null
+  is_superadmin?: boolean
+  token?: string
 }
 
 export default function HomePage() {
@@ -44,6 +47,11 @@ export default function HomePage() {
     if (raw) {
       try {
         const u = JSON.parse(raw)
+        if (!u?.token) {
+          localStorage.removeItem("st_user")
+          setIsAuthModalOpen(true)
+          return
+        }
         setCurrentUser(u)
         refreshFromApi().catch((e) => console.error("refreshFromApi failed:", e))
         return
@@ -130,6 +138,9 @@ export default function HomePage() {
         login: (user as any).login,
         name: (user as any).name || (user as any).login,
         role_text: (user as any).role_text,
+        telegram_id: (user as any).telegram_id,
+        is_superadmin: (user as any).is_superadmin,
+        token: (user as any).token,
       })
       await refreshFromApi().catch((e) => console.error("refreshFromApi failed:", e))
       setIsAuthModalOpen(false)
@@ -160,6 +171,9 @@ export default function HomePage() {
         login: (user as any).login,
         name: (user as any).name || name,
         role_text: (user as any).role_text,
+        telegram_id: (user as any).telegram_id,
+        is_superadmin: (user as any).is_superadmin,
+        token: (user as any).token,
       })
       await refreshFromApi().catch((e) => console.error("refreshFromApi failed:", e))
       setIsAuthModalOpen(false)
@@ -182,6 +196,24 @@ export default function HomePage() {
     setIsProfileModalOpen(false)
     setIsAuthModalOpen(true)
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleAuthExpired = () => {
+      setAuthError("Сессия истекла. Войдите снова.")
+      setShowTaskForm(false)
+      setShowSettings(false)
+      setEditingTask(undefined)
+      clearTasksState()
+      setCurrentUser(null)
+      setIsProfileModalOpen(false)
+      setIsAuthModalOpen(true)
+    }
+
+    window.addEventListener("simpletracker:auth-expired", handleAuthExpired)
+    return () => window.removeEventListener("simpletracker:auth-expired", handleAuthExpired)
+  }, [clearTasksState])
 
   // КНОПКА В ХЕДЕРЕ
   const handleHeaderUserClick = () => {

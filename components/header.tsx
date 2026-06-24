@@ -16,6 +16,7 @@ interface HeaderProps {
     login: string
     role_text?: string
     telegram_id?: string | null // <-- добавлено, чтобы далее пробрасывать в модалку
+    is_superadmin?: boolean
   } | null
 }
 
@@ -84,9 +85,11 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="icon" onClick={onOpenSettings}>
-              <SettingsIcon className="h-5 w-5" />
-            </Button>
+            {user?.is_superadmin ? (
+              <Button variant="outline" size="icon" onClick={onOpenSettings}>
+                <SettingsIcon className="h-5 w-5" />
+              </Button>
+            ) : null}
 
             <Button variant="outline" size="icon" onClick={toggleTheme}>
               {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
