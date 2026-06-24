@@ -7,6 +7,7 @@ import { Header } from "@/components/header"
 import { TaskList } from "@/components/task-list"
 import { TaskForm } from "@/components/task-form"
 import { GanttChart } from "@/components/gantt-chart"
+import { TaskHoursBoard } from "@/components/task-hours-board"
 import { Settings } from "@/components/settings"
 import { AuthModal } from "@/components/auth-modal"
 import { ProfileModal } from "@/components/profile-modal"
@@ -246,9 +247,9 @@ export default function HomePage() {
             <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
           ) : null}
 
-          <main className="flex-1 overflow-hidden">
-            <div className="flex h-full flex-col gap-4 p-4">
-              <div ref={containerRef} className="flex min-h-[280px] flex-1 items-stretch">
+          <main className="flex-1 overflow-y-auto">
+            <div className="flex min-h-full flex-col gap-4 p-4">
+              <div ref={containerRef} className="flex min-h-[520px] flex-[1_0_560px] items-stretch">
                 <div
                   className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
                   style={{ flexBasis: `${leftWidth}%` }}
@@ -273,6 +274,7 @@ export default function HomePage() {
                   <GanttChart canEdit={!isReadOnlyUser(currentUser)} onEditTask={handleEditTask} />
                 </div>
               </div>
+              <TaskHoursBoard canEdit={!isReadOnlyUser(currentUser)} onEditTask={handleEditTask} />
             </div>
           </main>
           <footer className="px-4 pb-2">

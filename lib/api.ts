@@ -90,6 +90,11 @@ function ymdFromIso(iso?: string | null): string | null {
   if (!iso) return null
   return new Date(iso).toISOString().slice(0, 10)
 }
+function numberFromApi(value?: number | string | null): number | null {
+  if (value == null || value === "") return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
 
 /** RU -> API: сохраняем конкретный UI-статус без схлопывания в in_progress. */
 function ruToApiStatusFlex(s?: string | null): string | null {
@@ -116,6 +121,8 @@ function fromApiTask(t: ApiTask): Task {
     startDate: ymdFromIso(t.start_at),
     endDate: ymdFromIso(t.due_at),
     link: t.link_url ?? null,
+    approvedHours: numberFromApi(t.approved_hours),
+    spentHours: numberFromApi(t.spent_hours),
     tags: (t.tags || []).map((x) => x.title),
     hiddenFromGantt: false,
   }
@@ -134,6 +141,8 @@ function toApiCreate(input: CreateTaskInput) {
     start_at: isoFromYmd(input.startDate ?? null),
     due_at: isoFromYmd(input.endDate ?? null),
     link_url: input.link ?? null,
+    approved_hours: input.approvedHours ?? null,
+    spent_hours: input.spentHours ?? null,
     created_by: input.assigneeId ?? null,
   }
 }
@@ -149,6 +158,8 @@ function toApiPatch(patch: PatchTaskInput) {
   if (patch.startDate !== undefined) out.start_at = isoFromYmd(patch.startDate ?? null)
   if (patch.endDate !== undefined) out.due_at = isoFromYmd(patch.endDate ?? null)
   if (patch.link !== undefined) out.link_url = patch.link ?? null
+  if (patch.approvedHours !== undefined) out.approved_hours = patch.approvedHours ?? null
+  if (patch.spentHours !== undefined) out.spent_hours = patch.spentHours ?? null
   if (patch.updatedBy !== undefined) out.updated_by = patch.updatedBy ?? null
   return out
 }
@@ -351,6 +362,8 @@ export async function createTask(
     start_at?: string | null
     due_at?: string | null
     link_url?: string | null
+    approved_hours?: number | string | null
+    spent_hours?: number | string | null
     priority?: "low" | "medium" | "high"
     status?: string
     created_by?: number
@@ -365,6 +378,8 @@ export async function createTask(
     startDate: payload.start_at === undefined ? undefined : ymdFromIso(payload.start_at),
     endDate: payload.due_at === undefined ? undefined : ymdFromIso(payload.due_at),
     link: payload.link_url ?? null,
+    approvedHours: numberFromApi(payload.approved_hours),
+    spentHours: numberFromApi(payload.spent_hours),
     priority: payload.priority
       ? PRIORITY_API_TO_RU[payload.priority]
       : "средний",
@@ -383,6 +398,8 @@ export async function updateTask(
     start_at?: string | null
     due_at?: string | null
     link_url?: string | null
+    approved_hours?: number | string | null
+    spent_hours?: number | string | null
     priority?: "low" | "medium" | "high"
     updated_by?: number
   },
@@ -401,6 +418,10 @@ export async function updateTask(
     startDate: payload.start_at === undefined ? undefined : ymdFromIso(payload.start_at),
     endDate: payload.due_at === undefined ? undefined : ymdFromIso(payload.due_at),
     link: payload.link_url === undefined ? undefined : payload.link_url,
+    approvedHours:
+      payload.approved_hours === undefined ? undefined : numberFromApi(payload.approved_hours),
+    spentHours:
+      payload.spent_hours === undefined ? undefined : numberFromApi(payload.spent_hours),
     updatedBy:
       payload.updated_by === undefined ? undefined : payload.updated_by ?? null,
   }

@@ -33,6 +33,8 @@ export interface Task {
   assigneeId?: number | null;
   assigneeName?: string | null;
   priority: TaskPriority;
+  approvedHours?: number | null;
+  spentHours?: number | null;
   tags: string[];            // пока строки в UI (названия тегов)
   hiddenFromGantt?: boolean;
 }
@@ -117,6 +119,8 @@ export interface ApiTask {
   start_at: string | null; // ISO
   due_at: string | null;   // ISO
   link_url: string | null;
+  approved_hours?: number | string | null;
+  spent_hours?: number | string | null;
   created_at: string;      // ISO
   updated_at: string;      // ISO
   assignee_name?: string | null;
@@ -177,6 +181,8 @@ export type CreateTaskInput = {
   startDate?: string | null; // YYYY-MM-DD
   endDate?: string | null;   // YYYY-MM-DD
   link?: string | null;
+  approvedHours?: number | null;
+  spentHours?: number | null;
   tags?: string[];           // названия тегов в UI (пока)
 };
 

@@ -51,8 +51,17 @@ type FormState = {
   assigneeId: number | null
   assigneeName: string | null
   priority: TaskPriority
+  approvedHours: string
+  spentHours: string
   tags: string[]
   statusLog: Task["statusLog"]
+}
+
+function parseHoursInput(value: string): number | null {
+  const trimmed = value.trim().replace(",", ".")
+  if (!trimmed) return null
+  const n = Number(trimmed)
+  return Number.isFinite(n) && n >= 0 ? n : Number.NaN
 }
 
 export function TaskForm({ task, open, onClose }: TaskFormProps) {
@@ -72,6 +81,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
     assigneeId: null,
     assigneeName: null,
     priority: "средний",
+    approvedHours: "",
+    spentHours: "",
     tags: [],
     statusLog: [],
   })
@@ -94,6 +105,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
             : null,
         assigneeName: task.assigneeName ?? null,
         priority: task.priority ?? "средний",
+        approvedHours: task.approvedHours == null ? "" : String(task.approvedHours),
+        spentHours: task.spentHours == null ? "" : String(task.spentHours),
         tags: Array.isArray(task.tags) ? task.tags : [],
         statusLog: Array.isArray(task.statusLog) ? task.statusLog : [],
       })
@@ -109,6 +122,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
         assigneeId: null,
         assigneeName: null,
         priority: "средний",
+        approvedHours: "",
+        spentHours: "",
         tags: [],
         statusLog: [],
       })
@@ -123,6 +138,14 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
     if (!formData.title.trim()) nextErrors.title = "Название обязательно"
     if (formData.id === "" || !validateTaskId(Number(formData.id))) {
       nextErrors.id = "ID должен быть 5-значным числом"
+    }
+    const approvedHours = parseHoursInput(formData.approvedHours)
+    const spentHours = parseHoursInput(formData.spentHours)
+    if (Number.isNaN(approvedHours)) {
+      nextErrors.approvedHours = "Укажите неотрицательное число"
+    }
+    if (Number.isNaN(spentHours)) {
+      nextErrors.spentHours = "Укажите неотрицательное число"
     }
 
     if (Object.keys(nextErrors).length) {
@@ -142,6 +165,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
       assigneeId: formData.assigneeId, // null — ОК, 0 — НЕЛЬЗЯ
       assigneeName: formData.assigneeName ?? null,
       priority: formData.priority,
+      approvedHours,
+      spentHours,
       tags: Array.isArray(formData.tags) ? formData.tags : [],
       // link у нас кастомное поле в UI
       ...(formData.link ? { link: formData.link } : { link: "" }),
@@ -312,6 +337,42 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
                 value={formData.endDate}
                 onChange={(e) => setFormData((p) => ({ ...p, endDate: e.target.value }))}
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="approvedHours">Часов согласовано</Label>
+              <Input
+                id="approvedHours"
+                type="number"
+                min="0"
+                step="0.25"
+                inputMode="decimal"
+                value={formData.approvedHours}
+                onChange={(e) => setFormData((p) => ({ ...p, approvedHours: e.target.value }))}
+                placeholder="0"
+              />
+              {errors.approvedHours && (
+                <p className="text-xs text-destructive">{errors.approvedHours}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="spentHours">Часов затрачено</Label>
+              <Input
+                id="spentHours"
+                type="number"
+                min="0"
+                step="0.25"
+                inputMode="decimal"
+                value={formData.spentHours}
+                onChange={(e) => setFormData((p) => ({ ...p, spentHours: e.target.value }))}
+                placeholder="0"
+              />
+              {errors.spentHours && (
+                <p className="text-xs text-destructive">{errors.spentHours}</p>
+              )}
             </div>
           </div>
 
