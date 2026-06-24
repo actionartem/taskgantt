@@ -50,6 +50,11 @@ jobs:
           scp -i ~/.ssh/deploy_key -P "$DEPLOY_PORT" simpletracker-frontend.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/tmp/simpletracker-frontend-${GITHUB_SHA}.tar.gz"
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "GITHUB_SHA=$GITHUB_SHA bash -s" <<'SSH'
             set -euo pipefail
+            if [ -d /srv/taskgantt/.git ]; then
+              cd /srv/taskgantt
+              git fetch origin main
+              git reset --hard origin/main
+            fi
             release="/var/www/simpletracker/releases/${GITHUB_SHA}"
             mkdir -p "$release"
             tar -xzf "/tmp/simpletracker-frontend-${GITHUB_SHA}.tar.gz" -C "$release"
