@@ -311,7 +311,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
   if (visibleTasks.length === 0) {
     return (
       <Card className="flex flex-col h-full">
-        <div className="min-h-10 border-b px-3 py-2">
+        <div className="flex min-h-9 items-center border-b px-3 py-1">
           <h2 className="text-sm font-semibold">Диаграмма Ганта</h2>
         </div>
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -323,7 +323,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
 
   return (
     <Card className="flex flex-col h-full overflow-hidden">
-      <div className="flex min-h-10 items-center justify-between gap-3 border-b px-3 py-2">
+      <div className="flex min-h-9 items-center justify-between gap-3 border-b px-3 py-1">
         <h2 className="text-sm font-semibold">Диаграмма Ганта</h2>
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={handleScrollToToday}>
           Сегодня

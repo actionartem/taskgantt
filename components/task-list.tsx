@@ -44,7 +44,7 @@ export const TaskList: React.FC<TaskListProps> = ({ canEdit = true, onCreateTask
 
   return (
     <Card className="relative flex flex-col h-full overflow-hidden">
-      <div className="flex min-h-10 items-center justify-between gap-3 border-b px-3 py-2">
+      <div className="flex min-h-9 items-center justify-between gap-3 border-b px-3 py-1">
         <h2 className="text-sm font-semibold">Список задач</h2>
         {canEdit ? (
           <Button onClick={onCreateTask} size="sm" className="h-7 px-2 text-xs">
