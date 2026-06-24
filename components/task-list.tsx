@@ -44,7 +44,7 @@ export const TaskList: React.FC<TaskListProps> = ({ canEdit = true, onCreateTask
 
   return (
     <Card className="relative flex h-full flex-col gap-0 overflow-hidden py-0">
-      <div className="flex min-h-9 items-center justify-between gap-3 border-b px-3 py-1">
+      <div className="flex min-h-10 items-center justify-between gap-3 border-b bg-gradient-to-r from-primary/10 via-card to-accent/35 px-3 py-1">
         <h2 className="text-sm font-semibold">Список задач</h2>
         {canEdit ? (
           <Button onClick={onCreateTask} size="sm" className="h-7 px-2 text-xs">
@@ -68,7 +68,6 @@ export const TaskList: React.FC<TaskListProps> = ({ canEdit = true, onCreateTask
       />
 
       <div className="relative flex-1 overflow-y-auto">
-        <div className="pointer-events-none absolute inset-0 bg-[url('/images/clown.jpeg')] bg-[length:100%_auto] bg-top bg-no-repeat opacity-5" />
         <div className="relative z-10">
           {Object.entries(groupedTasks).map(([groupName, groupTasksList]) => (
             <div key={groupName}>

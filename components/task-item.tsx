@@ -46,7 +46,7 @@ export function TaskItem({ task, canEdit = true, onEdit }: TaskItemProps) {
   }, [task.assigneeName, task.assigneeId, (task as any).assignee, settings.executors])
 
   return (
-    <div className="flex items-center gap-3 p-3 border-b hover:bg-muted/50 transition-colors">
+    <div className="interactive-row flex items-center gap-3 border-b bg-card/40 p-3 hover:bg-accent/35">
       <div className="flex-shrink-0 w-16 text-sm font-mono text-muted-foreground">{task.id}</div>
 
       <div className="flex-1 min-w-0">
@@ -55,7 +55,7 @@ export function TaskItem({ task, canEdit = true, onEdit }: TaskItemProps) {
             href={task.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-medium hover:underline inline-flex items-center gap-1"
+            className="inline-flex items-center gap-1 text-sm font-medium hover:text-primary hover:underline"
           >
             {task.title}
             <ExternalLink className="h-3 w-3" />
@@ -69,7 +69,7 @@ export function TaskItem({ task, canEdit = true, onEdit }: TaskItemProps) {
         {/* Бейдж статуса — только отображение, кликов нет */}
         <Badge
           style={{ backgroundColor: STATUS_COLORS[task.status], color: "white" }}
-          className="cursor-default select-none"
+          className="cursor-default select-none shadow-sm"
           title="Статус изменяется в режиме редактирования задачи"
           aria-disabled
         >
@@ -77,7 +77,7 @@ export function TaskItem({ task, canEdit = true, onEdit }: TaskItemProps) {
         </Badge>
 
         {assigneeDisplay ? (
-          <span className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1 rounded-md border bg-background/60 px-2 py-0.5 text-xs text-muted-foreground">
             <User className="h-3.5 w-3.5" />
             {assigneeDisplay}
           </span>

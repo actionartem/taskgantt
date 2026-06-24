@@ -58,9 +58,19 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
   })
 
   return (
-    <header className="border-b bg-card">
-      <div className="mx-auto flex min-h-14 w-full max-w-[1520px] flex-wrap items-center justify-center gap-x-2 gap-y-1.5 px-4 py-2">
-        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-center gap-1.5">
+    <header className="app-header">
+      <div className="mx-auto flex min-h-16 w-full max-w-[1600px] flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2">
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-xs font-bold text-primary shadow-sm">
+            ST
+          </div>
+          <div className="leading-tight">
+            <div className="text-sm font-semibold tracking-normal">SimpleTracker</div>
+            <div className="text-[11px] font-medium text-muted-foreground">{tasks.length} задач</div>
+          </div>
+        </div>
+
+        <div className="flex min-w-0 max-w-full flex-1 flex-wrap items-center justify-center gap-1.5">
           {statusOrder.map(({ status, label }) => {
             const isSelected = selectedStatuses.includes(status)
             return (
@@ -69,10 +79,10 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
                 type="button"
                 onClick={() => toggleSelectedStatus(status)}
                 className={cn(
-                  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+                  "status-filter inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium",
                   isSelected
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-border bg-muted/60 text-foreground hover:bg-muted",
+                    ? "border-primary/70 bg-primary text-primary-foreground shadow-md"
+                    : "border-border/75 bg-background/65 text-foreground hover:border-primary/40 hover:bg-accent/70",
                 )}
                 aria-pressed={isSelected}
                 title={`${label}: ${statusCounts[status]}`}
@@ -81,7 +91,7 @@ export function Header({ onOpenSettings, onOpenAuth, user }: HeaderProps) {
                 <span
                   className={cn(
                     "rounded px-1.5 py-0.5 text-[11px] font-semibold leading-none",
-                    isSelected ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background text-muted-foreground",
+                    isSelected ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground",
                   )}
                 >
                   {statusCounts[status]}

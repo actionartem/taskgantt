@@ -47,7 +47,7 @@ export function TaskFilters({
   const { settings } = useApp()
 
   return (
-    <div className="space-y-3 p-4 border-b bg-card">
+    <div className="space-y-3 border-b bg-muted/25 p-3">
       <Input
         placeholder="Поиск по названию или ID..."
         value={search}
@@ -58,7 +58,7 @@ export function TaskFilters({
       <div className="grid grid-cols-2 gap-2">
         <div className="flex items-center gap-2">
           <Select value={status} onValueChange={onStatusChange}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="h-8 w-40">
               <SelectValue placeholder="Статус" />
             </SelectTrigger>
             <SelectContent>
@@ -69,12 +69,12 @@ export function TaskFilters({
               ))}
             </SelectContent>
           </Select>
-          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Статус</span>
+          <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Статус</span>
         </div>
 
         <div className="flex items-center gap-2">
           <Select value={assigneeId} onValueChange={onAssigneeChange}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="h-8 w-40">
               <SelectValue placeholder="Исполнитель" />
             </SelectTrigger>
             <SelectContent>
@@ -86,12 +86,12 @@ export function TaskFilters({
               ))}
             </SelectContent>
           </Select>
-          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Исполнитель</span>
+          <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Исполнитель</span>
         </div>
 
         <div className="flex items-center gap-2">
           <Select value={tag} onValueChange={onTagChange}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="h-8 w-40">
               <SelectValue placeholder="Тег" />
             </SelectTrigger>
             <SelectContent>
@@ -103,12 +103,12 @@ export function TaskFilters({
               ))}
             </SelectContent>
           </Select>
-          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Тег</span>
+          <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Тег</span>
         </div>
 
         <div className="flex items-center gap-2">
           <Select value={priority} onValueChange={onPriorityChange}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="h-8 w-40">
               <SelectValue placeholder="Приоритет" />
             </SelectTrigger>
             <SelectContent>
@@ -120,7 +120,7 @@ export function TaskFilters({
               ))}
             </SelectContent>
           </Select>
-          <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">Приоритет</span>
+          <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Приоритет</span>
         </div>
       </div>
     </div>

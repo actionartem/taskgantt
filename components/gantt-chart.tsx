@@ -302,7 +302,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
   if (visibleTasks.length === 0) {
     return (
       <Card className="flex h-full flex-col gap-0 py-0">
-        <div className="flex min-h-9 items-center border-b px-3 py-1">
+        <div className="flex min-h-10 items-center border-b bg-gradient-to-r from-primary/10 via-card to-accent/35 px-3 py-1">
           <h2 className="text-sm font-semibold">Диаграмма Ганта</h2>
         </div>
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -314,7 +314,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
 
   return (
     <Card className="flex h-full flex-col gap-0 overflow-hidden py-0">
-      <div className="flex min-h-9 items-center justify-between gap-3 border-b px-3 py-1">
+      <div className="flex min-h-10 items-center justify-between gap-3 border-b bg-gradient-to-r from-primary/10 via-card to-accent/35 px-3 py-1">
         <h2 className="text-sm font-semibold">Диаграмма Ганта</h2>
         <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={handleScrollToToday}>
           Сегодня
@@ -338,7 +338,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
             style={{ left: `${getPositionFromDate(today) + 200}px` }}
           />
           {/* Временная шкала */}
-          <div className="sticky top-0 z-40 border-b bg-card shadow-sm">
+          <div className="sticky top-0 z-40 border-b bg-card/95 shadow-sm backdrop-blur">
             <div className="flex flex-col" style={{ paddingLeft: "200px" }}>
               <div className="flex h-9 text-muted-foreground">
                 {timelineDays.map((date, index) => {
@@ -376,8 +376,8 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
                   const width = endPos - startPos + dayWidth
 
                   return (
-                    <div key={task.id} className="flex items-center border-b h-12 hover:bg-muted/50">
-                      <div className="w-[200px] px-4 text-sm truncate flex-shrink-0">{task.title}</div>
+                    <div key={task.id} className="interactive-row flex h-12 items-center border-b hover:bg-accent/30">
+                      <div className="w-[200px] flex-shrink-0 truncate px-4 text-sm font-medium">{task.title}</div>
                       <div
                         className="flex-1 relative"
                         style={{
@@ -395,7 +395,7 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
                           ))}
                         </div>
                         <div
-                          className={`absolute top-1/2 -translate-y-1/2 rounded group z-10 ${
+                          className={`group absolute top-1/2 z-10 -translate-y-1/2 rounded-md shadow-md transition-[filter,box-shadow,transform] duration-200 hover:brightness-105 hover:shadow-lg ${
                             canEdit ? "cursor-move" : "cursor-default"
                           }`}
                           style={{

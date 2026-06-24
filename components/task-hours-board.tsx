@@ -87,7 +87,7 @@ function TaskRow({
   const spentHours = getHours(task.spentHours)
 
   return (
-    <article className="group flex min-h-12 items-center gap-2 border-b px-3 py-2 text-sm last:border-b-0 hover:bg-muted/40">
+    <article className="interactive-row group flex min-h-12 items-center gap-2 border-b bg-card/35 px-3 py-2 text-sm last:border-b-0 hover:bg-accent/35">
       <div className="w-14 flex-none font-mono text-xs text-muted-foreground">#{task.id}</div>
 
       <div className="min-w-0 flex-1">
@@ -179,8 +179,8 @@ function TaskColumn({
   children: React.ReactNode
 }) {
   return (
-    <section className="flex min-h-[360px] flex-col overflow-hidden rounded-md border bg-card">
-      <div className="flex min-h-10 items-center justify-between gap-3 border-b px-3">
+    <section className="workspace-panel flex min-h-[360px] flex-col overflow-hidden rounded-lg border">
+      <div className="flex min-h-10 items-center justify-between gap-3 border-b bg-gradient-to-r from-primary/10 via-card/70 to-accent/35 px-3">
         <h2 className="text-sm font-semibold">{title}</h2>
         <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
           {tasks.length}

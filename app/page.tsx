@@ -234,7 +234,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="app-shell">
       {currentUser ? (
         <>
           <Header
@@ -265,7 +265,7 @@ export default function HomePage() {
                   onMouseDown={startResizing}
                   onTouchStart={startResizing}
                 >
-                  <div className="h-full w-full rounded bg-neutral-200 transition-colors hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600" />
+                  <div className="h-full w-full rounded bg-border/70 transition-all hover:bg-primary/45 hover:shadow-md" />
                 </div>
                 <div
                   className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
