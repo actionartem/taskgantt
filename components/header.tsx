@@ -61,8 +61,8 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
 
   return (
     <header className="app-header">
-      <div className="mx-auto flex h-14 min-h-14 w-full max-w-[1600px] flex-nowrap items-center justify-between gap-3 overflow-x-auto px-4 py-2">
-        <div className="flex shrink-0 items-center gap-2">
+      <div className="mx-auto flex min-h-14 w-full max-w-[1600px] flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2">
+        <div className="order-1 flex shrink-0 items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-xs font-bold text-primary shadow-sm">
             ST
           </div>
@@ -72,7 +72,7 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
           </div>
         </div>
 
-        <div className="flex min-w-0 max-w-full flex-1 flex-nowrap items-center justify-center gap-1.5">
+        <div className="order-3 flex w-full min-w-0 max-w-full flex-wrap items-center justify-start gap-1.5 xl:order-2 xl:w-auto xl:flex-1 xl:justify-center">
           {statusOrder.map(({ status, label }) => {
             const isSelected = selectedStatuses.includes(status)
             return (
@@ -103,7 +103,7 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
           })}
         </div>
 
-        <div className="flex max-w-full shrink-0 flex-nowrap items-center justify-center gap-2">
+        <div className="order-2 ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2 xl:order-3">
           <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
             <SelectTrigger className="h-8 w-[170px] max-w-full">
               <SelectValue placeholder="Группировка" />
