@@ -275,46 +275,29 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
     return isWeekend || holidays.has(key)
   }
 
-  useEffect(() => {
-    const topScroll = topScrollRef.current
-    const mainScroll = mainScrollRef.current
-
-    if (!topScroll || !mainScroll) {
+  const syncHorizontalScroll = (source: HTMLDivElement, target: HTMLDivElement) => {
+    if (isSyncingScrollRef.current) {
       return
     }
 
-    const syncScroll = (source: HTMLDivElement, target: HTMLDivElement) => {
-      if (isSyncingScrollRef.current) {
-        return
-      }
+    isSyncingScrollRef.current = true
+    target.scrollLeft = source.scrollLeft
+    requestAnimationFrame(() => {
+      isSyncingScrollRef.current = false
+    })
+  }
 
-      isSyncingScrollRef.current = true
-      target.scrollLeft = source.scrollLeft
-      requestAnimationFrame(() => {
-        isSyncingScrollRef.current = false
-      })
-    }
+  const handleTopScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const mainScroll = mainScrollRef.current
+    if (!mainScroll) return
+    syncHorizontalScroll(event.currentTarget, mainScroll)
+  }
 
-    const handleTopScroll = () => {
-      if (topScroll && mainScroll) {
-        syncScroll(topScroll, mainScroll)
-      }
-    }
-
-    const handleMainScroll = () => {
-      if (topScroll && mainScroll) {
-        syncScroll(mainScroll, topScroll)
-      }
-    }
-
-    topScroll.addEventListener("scroll", handleTopScroll)
-    mainScroll.addEventListener("scroll", handleMainScroll)
-
-    return () => {
-      topScroll.removeEventListener("scroll", handleTopScroll)
-      mainScroll.removeEventListener("scroll", handleMainScroll)
-    }
-  }, [])
+  const handleMainScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const topScroll = topScrollRef.current
+    if (!topScroll) return
+    syncHorizontalScroll(event.currentTarget, topScroll)
+  }
 
   if (visibleTasks.length === 0) {
     return (
@@ -339,12 +322,16 @@ export function GanttChart({ canEdit = true, onEditTask }: GanttChartProps) {
       </div>
 
       <div className="border-b">
-        <div ref={topScrollRef} className="h-2 overflow-x-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5">
+        <div
+          ref={topScrollRef}
+          className="h-3 overflow-x-auto overflow-y-hidden [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2"
+          onScroll={handleTopScroll}
+        >
           <div style={{ width: `${chartWidth}px`, height: "1px" }} />
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto" ref={mainScrollRef}>
+      <div className="flex-1 overflow-auto" ref={mainScrollRef} onScroll={handleMainScroll}>
         <div className="relative min-w-max">
           <div
             className="absolute bottom-0 top-9 z-20 w-px bg-red-500/90 pointer-events-none"
