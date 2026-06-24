@@ -43,7 +43,6 @@ const EXPORT_STATUSES: TaskStatus[] = [
 const EXPORT_FIELDS: Array<{ key: TaskExportField; label: string }> = [
   { key: "title", label: "Название" },
   { key: "status", label: "Статус" },
-  { key: "assignee", label: "Исполнитель" },
   { key: "approved_hours", label: "Согласовано часов" },
   { key: "spent_hours", label: "Затрачено часов" },
   { key: "link_url", label: "Ссылка на задачу в JIRA" },
