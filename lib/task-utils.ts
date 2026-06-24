@@ -47,7 +47,7 @@ export function filterTasks(
 
     // Фильтр по исполнителю
     if (filters.assignee && filters.assignee !== "Все") {
-      if (task.assignee !== filters.assignee) return false
+      if (task.assigneeName !== filters.assignee) return false
     }
 
     // Фильтр по тегу
@@ -75,7 +75,7 @@ export function groupTasks(tasks: Task[], groupBy: GroupBy): Record<string, Task
     let key: string
 
     if (groupBy === "assignee") {
-      key = task.assignee || "Без исполнителя"
+      key = task.assigneeName || "Без исполнителя"
     } else if (groupBy === "status") {
       key = task.status
     } else {

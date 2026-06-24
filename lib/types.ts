@@ -140,25 +140,26 @@ export const PRIORITY_API_TO_RU: Record<Exclude<ApiPriority, null>, TaskPriority
   high: "высокий",
 };
 
-// Для статусов берём простую свёртку RU → API
+// Статусы храним в API без потери конкретного UI-значения.
 export const STATUS_RU_TO_API: Record<TaskStatus, ApiStatus> = {
-  "не в работе": "new",
-  "в аналитике": "in_progress",
-  "на согласовании": "in_progress",
-  оценка: "in_progress",
-  "ревью": "in_progress",
-  "готова к разработке": "in_progress",
-  разработка: "in_progress",
-  завершена: "done",
+  "не в работе": "не в работе",
+  "в аналитике": "в аналитике",
+  "на согласовании": "на согласовании",
+  оценка: "оценка",
+  "ревью": "ревью",
+  "готова к разработке": "готова к разработке",
+  разработка: "разработка",
+  завершена: "завершена",
 };
 
-// Обратный маппинг: всё активное считаем in_progress
+// Старые API-значения поддерживаем для совместимости с уже сохранёнными задачами.
 export const STATUS_API_TO_RU = (s: ApiStatus | null): TaskStatus => {
-  if (s === "review") return "ревью";
   if (s === "new") return "не в работе";
+  if (s === "in_progress") return "разработка";
   if (s === "done") return "завершена";
-  // любое иное серверное значение трактуем как «в работе»
-  return "разработка";
+  if (s === "review") return "ревью";
+  if (s && Object.prototype.hasOwnProperty.call(STATUS_COLORS, s)) return s as TaskStatus;
+  return "не в работе";
 };
 
 // =========================
@@ -180,4 +181,6 @@ export type CreateTaskInput = {
 };
 
 // Частичное обновление
-export type PatchTaskInput = Partial<CreateTaskInput> & { id: number };
+export type PatchTaskInput = Partial<CreateTaskInput> & {
+  updatedBy?: number | null;
+};

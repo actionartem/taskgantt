@@ -53,32 +53,15 @@ function ymdFromIso(iso?: string | null): string | null {
   return new Date(iso).toISOString().slice(0, 10)
 }
 
-/** Канонические соответствия — только 3 базовых статуса */
-const CANONICAL_RU_TO_API: Record<string, string> = {
-  "не в работе": "new",
-  "разработка": "in_progress",
-  "завершена": "done",
-  "ревью": "review",
-}
-const CANONICAL_API_TO_RU: Record<string, string> = {
-  new: "не в работе",
-  in_progress: "разработка",
-  done: "завершена",
-  review: "ревью",
-}
-
-/** RU -> API: маппим только 3 канонических; любые другие — оставляем как есть */
+/** RU -> API: сохраняем конкретный UI-статус без схлопывания в in_progress. */
 function ruToApiStatusFlex(s?: string | null): string | null {
   if (!s) return null
-  const key = s.toLowerCase()
-  if (key in CANONICAL_RU_TO_API) return CANONICAL_RU_TO_API[key]
-  return s
+  return STATUS_RU_TO_API[STATUS_API_TO_RU(s as any)]
 }
 
-/** API -> RU: маппим только 3 канонических; любые другие — показываем как есть */
-function apiToRuStatusFlex(s?: string | null): string {
-  if (!s) return "не в работе"
-  return CANONICAL_API_TO_RU[s] ?? s
+/** API -> RU: поддерживает старые английские и новые русские значения. */
+function apiToRuStatusFlex(s?: string | null): Task["status"] {
+  return STATUS_API_TO_RU((s ?? null) as any)
 }
 
 /** API → UI */
@@ -106,7 +89,7 @@ function toApiCreate(input: CreateTaskInput) {
     ...(input.id ? { id: input.id } : {}),
     title: input.title,
     description: input.description ?? null,
-    status: input.status ? ruToApiStatusFlex(input.status) : "new",
+    status: input.status ? ruToApiStatusFlex(input.status) : "не в работе",
     priority: input.priority ? PRIORITY_RU_TO_API[input.priority] : "medium",
     assignee_user_id:
       input.assigneeId === undefined ? null : input.assigneeId ?? null,
@@ -244,7 +227,10 @@ export async function fetchTasks(opts?: {
 }): Promise<Task[]> {
   const q = new URLSearchParams()
   if (opts?.search) q.set("search", opts.search)
-  if (opts?.status) q.set("status", ruToApiStatusFlex(opts.status))
+  if (opts?.status) {
+    const apiStatus = ruToApiStatusFlex(opts.status)
+    if (apiStatus) q.set("status", apiStatus)
+  }
   if (opts?.assigneeId) q.set("assignee_id", String(opts.assigneeId))
   if (opts?.priority) q.set("priority", PRIORITY_RU_TO_API[opts.priority])
   if (opts?.tagId) q.set("tag_id", String(opts.tagId))
@@ -310,7 +296,7 @@ export async function createTask(
   payload: {
     id?: number
     title: string
-    description?: string
+    description?: string | null
     assignee_user_id?: number | null
     start_at?: string | null
     due_at?: string | null
@@ -326,8 +312,8 @@ export async function createTask(
     description: payload.description ?? null,
     assigneeId:
       payload.assignee_user_id === undefined ? null : payload.assignee_user_id,
-    startDate: ymdFromIso(payload.start_at ?? null) ?? undefined,
-    endDate: ymdFromIso(payload.due_at ?? null) ?? undefined,
+    startDate: payload.start_at === undefined ? undefined : ymdFromIso(payload.start_at),
+    endDate: payload.due_at === undefined ? undefined : ymdFromIso(payload.due_at),
     link: payload.link_url ?? null,
     priority: payload.priority
       ? PRIORITY_API_TO_RU[payload.priority]
@@ -341,7 +327,7 @@ export async function updateTask(
   taskId: number | string,
   payload: {
     title?: string
-    description?: string
+    description?: string | null
     status?: string
     assignee_user_id?: number | null
     start_at?: string | null
@@ -362,9 +348,9 @@ export async function updateTask(
       payload.assignee_user_id === undefined
         ? undefined
         : payload.assignee_user_id,
-    startDate: ymdFromIso(payload.start_at ?? null) ?? undefined,
-    endDate: ymdFromIso(payload.due_at ?? null) ?? undefined,
-    link: payload.link_url ?? undefined,
+    startDate: payload.start_at === undefined ? undefined : ymdFromIso(payload.start_at),
+    endDate: payload.due_at === undefined ? undefined : ymdFromIso(payload.due_at),
+    link: payload.link_url === undefined ? undefined : payload.link_url,
     updatedBy:
       payload.updated_by === undefined ? undefined : payload.updated_by ?? null,
   }

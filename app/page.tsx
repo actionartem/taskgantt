@@ -12,6 +12,7 @@ import { AuthModal } from "@/components/auth-modal"
 import { ProfileModal } from "@/components/profile-modal"
 import type { Task } from "@/lib/types"
 import { loginPassword, registerPassword } from "@/lib/api"
+import { useApp } from "@/contexts/app-context"
 
 interface AuthenticatedUser {
   id?: number
@@ -21,6 +22,7 @@ interface AuthenticatedUser {
 }
 
 export default function HomePage() {
+  const { refreshFromApi, clearTasksState } = useApp()
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined)
   const [showSettings, setShowSettings] = useState(false)
@@ -43,6 +45,7 @@ export default function HomePage() {
       try {
         const u = JSON.parse(raw)
         setCurrentUser(u)
+        refreshFromApi().catch((e) => console.error("refreshFromApi failed:", e))
         return
       } catch {
         localStorage.removeItem("st_user")
@@ -50,7 +53,7 @@ export default function HomePage() {
     }
     // если нет юзера — сразу показать авторизацию
     setIsAuthModalOpen(true)
-  }, [])
+  }, [refreshFromApi])
 
   // ресайзер
   useEffect(() => {
@@ -128,6 +131,7 @@ export default function HomePage() {
         name: (user as any).name || (user as any).login,
         role_text: (user as any).role_text,
       })
+      await refreshFromApi().catch((e) => console.error("refreshFromApi failed:", e))
       setIsAuthModalOpen(false)
     } catch (e: any) {
       setAuthError(e.message || "Не удалось войти")
@@ -157,6 +161,7 @@ export default function HomePage() {
         name: (user as any).name || name,
         role_text: (user as any).role_text,
       })
+      await refreshFromApi().catch((e) => console.error("refreshFromApi failed:", e))
       setIsAuthModalOpen(false)
     } catch (e: any) {
       setAuthError(e.message || "Не удалось зарегистрироваться")
@@ -169,6 +174,10 @@ export default function HomePage() {
     if (typeof window !== "undefined") {
       localStorage.removeItem("st_user")
     }
+    setShowTaskForm(false)
+    setShowSettings(false)
+    setEditingTask(undefined)
+    clearTasksState()
     setCurrentUser(null)
     setIsProfileModalOpen(false)
     setIsAuthModalOpen(true)
@@ -180,56 +189,56 @@ export default function HomePage() {
     else setIsProfileModalOpen(true)
   }
 
-  const isLocked = !currentUser
-
   return (
     <div className="flex h-screen flex-col">
-      {/* Весь интерфейс в «заблокированном» контейнере */}
-      <div className={isLocked ? "pointer-events-none select-none blur-sm" : ""}>
-        <Header
-          onOpenSettings={() => setShowSettings(true)}
-          onOpenAuth={handleHeaderUserClick}
-          user={currentUser}
-        />
+      {currentUser ? (
+        <>
+          <Header
+            onOpenSettings={() => setShowSettings(true)}
+            onOpenAuth={handleHeaderUserClick}
+            user={currentUser}
+          />
 
-        {authError ? (
-          <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
-        ) : null}
+          {authError ? (
+            <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
+          ) : null}
 
-        <main className="flex-1 overflow-hidden">
-          <div className="flex h-full flex-col gap-4 p-4">
-            <div ref={containerRef} className="flex min-h-[280px] flex-1 items-stretch">
-              <div
-                className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
-                style={{ flexBasis: `${leftWidth}%` }}
-              >
-                <TaskList onCreateTask={handleCreateTask} onEditTask={handleEditTask} />
-              </div>
-              <div
-                className="mx-4 flex w-1 cursor-col-resize items-stretch"
-                onMouseDown={startResizing}
-                onTouchStart={startResizing}
-              >
-                <div className="h-full w-full rounded bg-neutral-200 transition-colors hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600" />
-              </div>
-              <div
-                className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
-                style={{ flexBasis: `${100 - leftWidth}%` }}
-              >
-                <GanttChart onEditTask={handleEditTask} />
+          <main className="flex-1 overflow-hidden">
+            <div className="flex h-full flex-col gap-4 p-4">
+              <div ref={containerRef} className="flex min-h-[280px] flex-1 items-stretch">
+                <div
+                  className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
+                  style={{ flexBasis: `${leftWidth}%` }}
+                >
+                  <TaskList onCreateTask={handleCreateTask} onEditTask={handleEditTask} />
+                </div>
+                <div
+                  className="mx-4 flex w-1 cursor-col-resize items-stretch"
+                  onMouseDown={startResizing}
+                  onTouchStart={startResizing}
+                >
+                  <div className="h-full w-full rounded bg-neutral-200 transition-colors hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600" />
+                </div>
+                <div
+                  className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
+                  style={{ flexBasis: `${100 - leftWidth}%` }}
+                >
+                  <GanttChart onEditTask={handleEditTask} />
+                </div>
               </div>
             </div>
-          </div>
-        </main>
-        <footer className="px-4 pb-6">
-          <div className="h-8 rounded-full bg-gradient-to-r from-neutral-200 via-neutral-100 to-neutral-200 shadow-inner dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800" />
-        </footer>
+          </main>
+          <footer className="px-4 pb-6">
+            <div className="h-8 rounded-full bg-gradient-to-r from-neutral-200 via-neutral-100 to-neutral-200 shadow-inner dark:from-neutral-800 dark:via-neutral-900 dark:to-neutral-800" />
+          </footer>
 
-        <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />
-        <Settings open={showSettings} onClose={() => setShowSettings(false)} />
-      </div>
+          <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />
+          <Settings open={showSettings} onClose={() => setShowSettings(false)} />
+        </>
+      ) : authError ? (
+        <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
+      ) : null}
 
-      {/* Модалки размещаем вне блокирующего контейнера */}
       {!currentUser && (
         <AuthModal
           open={isAuthModalOpen}

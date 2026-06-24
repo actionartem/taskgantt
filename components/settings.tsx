@@ -25,7 +25,7 @@ export function Settings({ open, onClose }: SettingsProps) {
   const { settings, setSettings } = useApp()
 
   const [executorForm, setExecutorForm] = useState<Partial<Executor>>({ name: "", role: "" })
-  const [editingExecutor, setEditingExecutor] = useState<string | null>(null)
+  const [editingExecutor, setEditingExecutor] = useState<number | null>(null)
 
   // Теги
   const [newTag, setNewTag] = useState("")
@@ -66,7 +66,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     getUsers()
       .then((users) => {
         const mapped: Executor[] = users.map((u) => ({
-          id: String(u.id),
+          id: u.id,
           name: u.name,
           role: u.role_text || "",
         }))
@@ -97,7 +97,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     setError(null)
     try {
       const created = await createUser(name, role)
-      const newExec: Executor = { id: String(created.id), name, role }
+      const newExec: Executor = { id: created.id, name, role }
       setSettings((prev) => ({ ...prev, executors: [...prev.executors, newExec] }))
       setExecutorForm({ name: "", role: "" })
     } catch (e: any) {
@@ -130,7 +130,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     }
   }
 
-  const handleDeleteExecutor = async (id: string) => {
+  const handleDeleteExecutor = async (id: number) => {
     setLoading(true)
     setError(null)
     try {

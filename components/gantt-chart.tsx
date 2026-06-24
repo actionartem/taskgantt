@@ -14,6 +14,8 @@ interface GanttChartProps {
   onEditTask: (task: Task) => void
 }
 
+type DragPreview = { id: number; startDate: string; endDate: string }
+
 export function GanttChart({ onEditTask }: GanttChartProps) {
   const { tasks, updateTask, groupBy, selectedStatuses } = useApp()
   const [draggedTask, setDraggedTask] = useState<Task | null>(null)
@@ -21,6 +23,8 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
   const [dragStartX, setDragStartX] = useState(0)
   const [dragStartDate, setDragStartDate] = useState<Date | null>(null)
   const [dragStartEndDate, setDragStartEndDate] = useState<Date | null>(null)
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null)
+  const dragPreviewRef = useRef<DragPreview | null>(null)
   const lastDragDeltaRef = useRef(0)
   const mainScrollRef = useRef<HTMLDivElement>(null)
   const topScrollRef = useRef<HTMLDivElement>(null)
@@ -34,13 +38,19 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
 
   // Фильтруем задачи с датами и не скрытые
   const hasStatusFilter = selectedStatuses.length > 0
-  const visibleTasks = tasks.filter(
-    (task) =>
-      task.startDate &&
-      task.endDate &&
-      !task.hiddenFromGantt &&
-      (!hasStatusFilter || selectedStatuses.includes(task.status)),
-  )
+  const visibleTasks = tasks
+    .map((task) =>
+      dragPreview && task.id === dragPreview.id
+        ? { ...task, startDate: dragPreview.startDate, endDate: dragPreview.endDate }
+        : task,
+    )
+    .filter(
+      (task) =>
+        task.startDate &&
+        task.endDate &&
+        !task.hiddenFromGantt &&
+        (!hasStatusFilter || selectedStatuses.includes(task.status)),
+    )
 
   // Группируем задачи
   const groupedTasks = groupTasks(visibleTasks, groupBy)
@@ -137,6 +147,8 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
     setDragStartX(e.clientX)
     setDragStartDate(new Date(task.startDate!))
     setDragStartEndDate(new Date(task.endDate!))
+    setDragPreview(null)
+    dragPreviewRef.current = null
     lastDragDeltaRef.current = 0
   }
 
@@ -155,19 +167,34 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
       if (dragType === "move") {
         startDate.setDate(startDate.getDate() + deltaDays)
         endDate.setDate(endDate.getDate() + deltaDays)
-        updateTask(draggedTask.id, {
+        const nextPreview = {
+          id: draggedTask.id,
           startDate: formatDate(startDate),
           endDate: formatDate(endDate),
-        })
+        }
+        setDragPreview(nextPreview)
+        dragPreviewRef.current = nextPreview
       } else if (dragType === "resize-left") {
         startDate.setDate(startDate.getDate() + deltaDays)
         if (startDate < endDate) {
-          updateTask(draggedTask.id, { startDate: formatDate(startDate) })
+          const nextPreview = {
+            id: draggedTask.id,
+            startDate: formatDate(startDate),
+            endDate: draggedTask.endDate!,
+          }
+          setDragPreview(nextPreview)
+          dragPreviewRef.current = nextPreview
         }
       } else if (dragType === "resize-right") {
         endDate.setDate(endDate.getDate() + deltaDays)
         if (endDate > startDate) {
-          updateTask(draggedTask.id, { endDate: formatDate(endDate) })
+          const nextPreview = {
+            id: draggedTask.id,
+            startDate: draggedTask.startDate!,
+            endDate: formatDate(endDate),
+          }
+          setDragPreview(nextPreview)
+          dragPreviewRef.current = nextPreview
         }
       }
 
@@ -175,11 +202,20 @@ export function GanttChart({ onEditTask }: GanttChartProps) {
     }
 
     const handleMouseUp = () => {
+      const preview = dragPreviewRef.current
+      if (draggedTask && preview) {
+        updateTask(draggedTask.id, {
+          startDate: preview.startDate,
+          endDate: preview.endDate,
+        })
+      }
       setDraggedTask(null)
       setDragType(null)
       setDragStartX(0)
       setDragStartDate(null)
       setDragStartEndDate(null)
+      setDragPreview(null)
+      dragPreviewRef.current = null
       lastDragDeltaRef.current = 0
     }
 

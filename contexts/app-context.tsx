@@ -32,10 +32,12 @@ interface AppContextType {
   groupBy: GroupBy
   selectedStatuses: TaskStatus[]
   setTasks: (tasks: Task[]) => void
+  clearTasksState: () => void
   addTask: (task: Task) => void
   updateTask: (id: number, updates: Partial<Task>) => void
   deleteTask: (id: number) => void
-  setSettings: (settings: AppSettings) => void
+  setSettings: (settings: React.SetStateAction<AppSettings>) => void
+  refreshFromApi: () => Promise<void>
   toggleTheme: () => void
   setGroupBy: (groupBy: GroupBy) => void
   toggleSelectedStatus: (status: TaskStatus) => void
@@ -89,7 +91,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ])
 
     const executors = users.map((u) => ({
-      id: String(u.id),
+      id: u.id,
       name: u.name,
       role: (u as any).role_text ?? undefined,
     }))
@@ -129,9 +131,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     storage.saveTasks(mergedTasks)
   }, [])
 
-  // Быстрая отрисовка из localStorage + последующее обновление с API
+  // Быстрая отрисовка настроек из localStorage. Данные задач тянем только после входа.
   useEffect(() => {
-    setTasksState(storage.getTasks())
     setSettingsState(storage.getSettings())
 
     const savedTheme = storage.getTheme()
@@ -139,15 +140,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (savedTheme === "dark") document.documentElement.classList.add("dark")
 
     setMounted(true)
-
-    refreshFromApi().catch((e) => console.error("refreshFromApi failed:", e))
-  }, [refreshFromApi])
+  }, [])
 
   // --- публичные методы контекста
   const setTasks = (newTasks: Task[]) => {
     setTasksState(newTasks)
     storage.saveTasks(newTasks)
   }
+
+  const clearTasksState = useCallback(() => {
+    setTasksState([])
+  }, [])
 
   const addTask = (task: Task) => {
     // оптимистично
@@ -254,13 +257,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   // >>> Безопасная запись настроек (важно!)
-  const setSettings = (newSettings: AppSettings) => {
-    if (!newSettings || typeof newSettings !== "object") {
-      console.warn("Skip invalid settings:", newSettings)
-      return
-    }
-    setSettingsState(newSettings)
-    storage.saveSettings(newSettings)
+  const setSettings = (nextSettings: React.SetStateAction<AppSettings>) => {
+    setSettingsState((prev) => {
+      const value =
+        typeof nextSettings === "function"
+          ? (nextSettings as (prevState: AppSettings) => AppSettings)(prev)
+          : nextSettings
+
+      if (!value || typeof value !== "object") {
+        console.warn("Skip invalid settings:", value)
+        return prev
+      }
+
+      storage.saveSettings(value)
+      return value
+    })
   }
 
   const toggleTheme = () => {
@@ -285,15 +296,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       groupBy,
       selectedStatuses,
       setTasks,
+      clearTasksState,
       addTask,
       updateTask,
       deleteTask,
       setSettings,
+      refreshFromApi,
       toggleTheme,
       setGroupBy,
       toggleSelectedStatus,
     }),
-    [tasks, settings, theme, groupBy, selectedStatuses, toggleSelectedStatus],
+    [tasks, settings, theme, groupBy, selectedStatuses, clearTasksState, refreshFromApi, toggleSelectedStatus],
   )
 
   if (!mounted) return null
