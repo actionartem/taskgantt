@@ -248,8 +248,8 @@ export default function HomePage() {
           ) : null}
 
           <main className="flex-1 overflow-y-auto">
-            <div className="flex min-h-full flex-col gap-4 p-4">
-              <div ref={containerRef} className="flex min-h-[520px] flex-[1_0_560px] items-stretch">
+            <div className="flex h-full flex-col gap-4 p-4">
+              <div ref={containerRef} className="flex min-h-[280px] flex-1 items-stretch">
                 <div
                   className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
                   style={{ flexBasis: `${leftWidth}%` }}
@@ -274,6 +274,8 @@ export default function HomePage() {
                   <GanttChart canEdit={!isReadOnlyUser(currentUser)} onEditTask={handleEditTask} />
                 </div>
               </div>
+            </div>
+            <div className="px-4 pb-4">
               <TaskHoursBoard canEdit={!isReadOnlyUser(currentUser)} onEditTask={handleEditTask} />
             </div>
           </main>
