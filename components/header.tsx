@@ -61,7 +61,7 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
 
   return (
     <header className="app-header">
-      <div className="mx-auto flex min-h-16 w-full max-w-[1600px] flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2">
+      <div className="mx-auto flex h-14 min-h-14 w-full max-w-[1600px] flex-nowrap items-center justify-between gap-3 overflow-x-auto px-4 py-2">
         <div className="flex shrink-0 items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-xs font-bold text-primary shadow-sm">
             ST
@@ -72,7 +72,7 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
           </div>
         </div>
 
-        <div className="flex min-w-0 max-w-full flex-1 flex-wrap items-center justify-center gap-1.5">
+        <div className="flex min-w-0 max-w-full flex-1 flex-nowrap items-center justify-center gap-1.5">
           {statusOrder.map(({ status, label }) => {
             const isSelected = selectedStatuses.includes(status)
             return (
@@ -103,7 +103,7 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
           })}
         </div>
 
-        <div className="flex max-w-full shrink-0 flex-wrap items-center justify-center gap-2">
+        <div className="flex max-w-full shrink-0 flex-nowrap items-center justify-center gap-2">
           <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
             <SelectTrigger className="h-8 w-[170px] max-w-full">
               <SelectValue placeholder="Группировка" />
@@ -115,11 +115,6 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
               <SelectItem value="priority">По приоритету</SelectItem>
             </SelectContent>
           </Select>
-
-          <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs" onClick={onOpenExport}>
-            <Download className="h-4 w-4" />
-            <span className="hidden whitespace-nowrap sm:inline">Выгрузить EXEL</span>
-          </Button>
 
           {user?.is_superadmin ? (
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={onOpenSettings} title="Настройки">
@@ -139,6 +134,11 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
           >
             <User className="h-4 w-4" />
             <span className="truncate whitespace-nowrap text-sm font-medium">{user?.name ?? "Войти"}</span>
+          </Button>
+
+          <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs" onClick={onOpenExport}>
+            <Download className="h-4 w-4" />
+            <span className="whitespace-nowrap">Выгрузить EXEL</span>
           </Button>
         </div>
       </div>

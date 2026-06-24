@@ -41,18 +41,14 @@ const EXPORT_STATUSES: TaskStatus[] = [
 ]
 
 const EXPORT_FIELDS: Array<{ key: TaskExportField; label: string }> = [
-  { key: "id", label: "ID" },
   { key: "title", label: "Название" },
   { key: "status", label: "Статус" },
-  { key: "priority", label: "Приоритет" },
   { key: "assignee", label: "Исполнитель" },
   { key: "approved_hours", label: "Согласовано часов" },
   { key: "spent_hours", label: "Затрачено часов" },
   { key: "link_url", label: "Ссылка на задачу в JIRA" },
   { key: "start_at", label: "Дата начала" },
   { key: "due_at", label: "Дата окончания" },
-  { key: "tags", label: "Теги" },
-  { key: "description", label: "Описание" },
 ]
 
 type ExportPhase = "idle" | "running" | "done" | "error"
