@@ -61,10 +61,10 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
 
   return (
     <header className="app-header">
-      <div className="mx-auto flex min-h-14 w-full max-w-[1600px] flex-wrap items-center justify-start gap-2 px-4 py-2">
+      <div className="flex min-h-14 w-full flex-wrap items-center justify-start gap-2 px-2 py-1.5">
         <div className="flex shrink-0 items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 shadow-sm">
-            <img src="/favicon_cat_64.png" alt="SimpleTracker" className="h-7 w-7 object-contain" />
+          <div className="flex h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-primary/30 bg-background shadow-sm">
+            <img src="/favicon_cat_64.png" alt="SimpleTracker" className="block h-full w-full object-cover" />
           </div>
           <div className="leading-tight">
             <div className="text-sm font-semibold tracking-normal">SimpleTracker</div>
@@ -103,7 +103,7 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
           })}
         </>
 
-        <div className="contents">
+        <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 self-center">
           <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
             <SelectTrigger className="h-8 w-[170px] max-w-full">
               <SelectValue placeholder="Группировка" />
