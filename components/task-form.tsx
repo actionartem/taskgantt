@@ -311,9 +311,6 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               }
               rows={4}
             />
-            <p className="text-xs text-muted-foreground">
-              Отправку и получение документов можно записывать по одной строке на событие.
-            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
