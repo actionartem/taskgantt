@@ -44,6 +44,8 @@ type FormState = {
   title: string
   link: string
   description: string
+  emailThread: string
+  documentHistory: string
   status: TaskStatus
   startDate: string
   endDate: string
@@ -75,6 +77,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
     title: "",
     link: "",
     description: "",
+    emailThread: "",
+    documentHistory: "",
     status: "не в работе",
     startDate: "",
     endDate: "",
@@ -96,6 +100,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
         title: task.title ?? "",
         link: (task as any).link ?? "",
         description: task.description ?? "",
+        emailThread: task.emailThread ?? "",
+        documentHistory: task.documentHistory ?? "",
         status: task.status,
         startDate: task.startDate ?? "",
         endDate: task.endDate ?? "",
@@ -116,6 +122,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
         title: "",
         link: "",
         description: "",
+        emailThread: "",
+        documentHistory: "",
         status: "не в работе",
         startDate: "",
         endDate: "",
@@ -158,6 +166,8 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
       id: Number(formData.id),
       title: formData.title.trim(),
       description: formData.description.trim(),
+      emailThread: formData.emailThread.trim() || null,
+      documentHistory: formData.documentHistory.trim() || null,
       status: formData.status,
       startDate: formData.startDate || "",
       endDate: formData.endDate || "",
@@ -268,6 +278,16 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="emailThread">Тред в почте</Label>
+            <Input
+              id="emailThread"
+              value={formData.emailThread}
+              onChange={(e) => setFormData((p) => ({ ...p, emailThread: e.target.value }))}
+              placeholder="Ссылка или идентификатор треда в почте"
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="description">Описание</Label>
             <Textarea
               id="description"
@@ -276,6 +296,24 @@ export function TaskForm({ task, open, onClose }: TaskFormProps) {
               placeholder="Описание задачи"
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="documentHistory">История</Label>
+            <Textarea
+              id="documentHistory"
+              value={formData.documentHistory}
+              onChange={(e) =>
+                setFormData((p) => ({ ...p, documentHistory: e.target.value }))
+              }
+              placeholder={
+                "06.08.2026 — документ получен нами\n07.08.2026 — документ отправлен нами"
+              }
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              Отправку и получение документов можно записывать по одной строке на событие.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

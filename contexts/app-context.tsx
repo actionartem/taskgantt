@@ -176,6 +176,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id: task.id,
       title: task.title,
       description: task.description ?? null,
+      emailThread: task.emailThread ?? null,
+      documentHistory: task.documentHistory ?? null,
       status: task.status,
       priority: task.priority,
       approvedHours: task.approvedHours ?? null,
@@ -227,6 +229,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updateTaskNew(id, {
       title: updates.title,
       description: updates.description,
+      emailThread: updates.emailThread,
+      documentHistory: updates.documentHistory,
       status: updates.status,
       priority: updates.priority,
       approvedHours: updates.approvedHours,

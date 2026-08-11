@@ -26,6 +26,8 @@ export interface Task {
   title: string;
   link?: string | null;      // ссылка на задачу (UI-поле "Ссылка на задачу")
   description: string | null;
+  emailThread?: string | null;
+  documentHistory?: string | null;
   status: TaskStatus;
   statusLog: StatusChangeLog[];
   startDate?: string | null; // YYYY-MM-DD (UI)
@@ -113,6 +115,8 @@ export interface ApiTask {
   id: string; // bigint из PG как строка
   title: string;
   description: string | null;
+  email_thread?: string | null;
+  document_history?: string | null;
   status: ApiStatus | null;
   priority: ApiPriority;
   assignee_user_id: number | string | null;
@@ -175,6 +179,8 @@ export type CreateTaskInput = {
   id?: number;
   title: string;
   description?: string | null;
+  emailThread?: string | null;
+  documentHistory?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
   assigneeId?: number | null;

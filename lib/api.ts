@@ -113,6 +113,8 @@ function fromApiTask(t: ApiTask): Task {
     id: Number(t.id),
     title: t.title,
     description: t.description,
+    emailThread: t.email_thread ?? null,
+    documentHistory: t.document_history ?? null,
     status: apiToRuStatusFlex(t.status),
     priority: t.priority ? PRIORITY_API_TO_RU[t.priority] : "средний",
     assigneeId: t.assignee_user_id ? Number(t.assignee_user_id) : null,
@@ -134,6 +136,8 @@ function toApiCreate(input: CreateTaskInput) {
     ...(input.id ? { id: input.id } : {}),
     title: input.title,
     description: input.description ?? null,
+    email_thread: input.emailThread ?? null,
+    document_history: input.documentHistory ?? null,
     status: input.status ? ruToApiStatusFlex(input.status) : "не в работе",
     priority: input.priority ? PRIORITY_RU_TO_API[input.priority] : "medium",
     assignee_user_id:
@@ -150,6 +154,10 @@ function toApiPatch(patch: PatchTaskInput) {
   const out: Record<string, unknown> = {}
   if (patch.title !== undefined) out.title = patch.title
   if (patch.description !== undefined) out.description = patch.description ?? null
+  if (patch.emailThread !== undefined) out.email_thread = patch.emailThread ?? null
+  if (patch.documentHistory !== undefined) {
+    out.document_history = patch.documentHistory ?? null
+  }
   if (patch.status !== undefined) out.status = ruToApiStatusFlex(patch.status!)
   if (patch.priority !== undefined)
     out.priority = PRIORITY_RU_TO_API[patch.priority!]
@@ -419,6 +427,8 @@ export async function createTask(
     id?: number
     title: string
     description?: string | null
+    email_thread?: string | null
+    document_history?: string | null
     assignee_user_id?: number | null
     start_at?: string | null
     due_at?: string | null
@@ -434,6 +444,8 @@ export async function createTask(
     id: payload.id,
     title: payload.title,
     description: payload.description ?? null,
+    emailThread: payload.email_thread ?? null,
+    documentHistory: payload.document_history ?? null,
     assigneeId:
       payload.assignee_user_id === undefined ? null : payload.assignee_user_id,
     startDate: payload.start_at === undefined ? undefined : ymdFromIso(payload.start_at),
@@ -454,6 +466,8 @@ export async function updateTask(
   payload: {
     title?: string
     description?: string | null
+    email_thread?: string | null
+    document_history?: string | null
     status?: string
     assignee_user_id?: number | null
     start_at?: string | null
@@ -468,6 +482,8 @@ export async function updateTask(
   const patch: PatchTaskInput = {
     title: payload.title,
     description: payload.description,
+    emailThread: payload.email_thread,
+    documentHistory: payload.document_history,
     status: payload.status ? apiToRuStatusFlex(payload.status as any) : undefined,
     priority: payload.priority
       ? PRIORITY_API_TO_RU[payload.priority]
