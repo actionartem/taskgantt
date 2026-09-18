@@ -15,7 +15,7 @@ import {
 /* ===================== BASE ===================== */
 
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ||
-  "https://api.simpletracker.ru").replace(/\/$/, "")
+  "https://api.simpletracker.ru:8444").replace(/\/$/, "")
 
 const AUTH_EXPIRED_EVENT = "simpletracker:auth-expired"
 
