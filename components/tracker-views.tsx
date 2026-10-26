@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { request, downloadDocument } from "@/lib/api";
 import { useApp } from "@/contexts/app-context";
-import type { Task } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -22,73 +21,6 @@ import {
 } from "@/lib/tracker-types";
 const errorText = (e: unknown) =>
   e instanceof Error ? e.message : "Не удалось загрузить данные";
-export function HoursView({
-  tasks,
-  onOpenTask,
-}: {
-  tasks: Task[];
-  onOpenTask: (task: Task) => void;
-}) {
-  const hours = (v: number | null | undefined) =>
-    v == null ? "Неизвестно" : v.toLocaleString("ru-RU") + " ч";
-  return (
-    <section className="hours-view" aria-label="Часы по текущему фильтру">
-      {[false, true].map((done) => {
-        const rows = tasks.filter((t) => (t.status === "завершена") === done);
-        return (
-          <div key={String(done)}>
-            <h2>
-              {done ? "Завершённые" : "Текущие"} · {rows.length}
-            </h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Задача</th>
-                  <th>Статус</th>
-                  <th>Согласовано</th>
-                  <th>Потрачено</th>
-                  <th>Отклонение</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((t) => {
-                  const delta =
-                    t.approvedHours == null || t.spentHours == null
-                      ? null
-                      : t.spentHours - t.approvedHours;
-                  return (
-                    <tr key={t.id}>
-                      <td>{t.id}</td>
-                      <td>
-                        <button onClick={() => onOpenTask(t)}>{t.title}</button>
-                      </td>
-                      <td>{t.status}</td>
-                      <td>{hours(t.approvedHours)}</td>
-                      <td>{hours(t.spentHours)}</td>
-                      <td
-                        className={
-                          delta != null && delta > 0 ? "hours-overrun" : ""
-                        }
-                      >
-                        {delta == null
-                          ? "Неизвестно"
-                          : `${delta > 0 ? "+" : ""}${hours(delta)}`}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {!rows.length && (
-              <p className="muted">По этим условиям задач нет.</p>
-            )}
-          </div>
-        );
-      })}
-    </section>
-  );
-}
 const sourceLabel = (s: string) =>
   ({
     simpletracker: "SimpleTracker",
@@ -111,7 +43,6 @@ const fieldLabel = (s: string) =>
     due_at: "Окончание",
     tags: "Теги",
     approved_hours: "Согласованные часы",
-    spent_hours: "Фактические часы",
     deadline_confirmed: "Срок подтверждён",
     next_action_at: "Срок действия",
     next_action_text: "Следующее действие",
@@ -533,7 +464,7 @@ export function TaskHistory({
                     ? "да"
                     : "нет"
                   : String(v);
-  const visible = events.filter(
+  const visible = events.filter(e => !e.changes.spent_hours || Object.keys(e.changes).some(k => k != "spent_hours")).filter(
     (e) =>
       filter === "all" ||
       (filter === "status"
@@ -603,7 +534,7 @@ export function TaskHistory({
                       : ""}
                   </span>
                 )}
-                {Object.entries(e.changes).map(([k, v]) => (
+                {Object.entries(e.changes).filter(([k]) => k !== "spent_hours").map(([k, v]) => (
                   <p key={k}>
                     {fieldLabel(k)}: <span>{value(k, v.old)}</span> →{" "}
                     <strong>{value(k, v.new)}</strong>

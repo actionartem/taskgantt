@@ -45,7 +45,6 @@ const EXPORT_FIELDS: Array<{ key: TaskExportField; label: string }> = [
   { key: "title", label: "Название" },
   { key: "status", label: "Статус" },
   { key: "approved_hours", label: "Согласовано часов" },
-  { key: "spent_hours", label: "Затрачено часов" },
   { key: "link_url", label: "Ссылка на задачу в JIRA" },
   { key: "start_at", label: "Дата начала" },
   { key: "due_at", label: "Дата окончания" },

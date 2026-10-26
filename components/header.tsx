@@ -1,7 +1,7 @@
 "use client"
 
 import { memo } from "react"
-import { Download, Moon, SettingsIcon, Sun, User } from "lucide-react"
+import { Download, SettingsIcon, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useApp } from "@/contexts/app-context"
@@ -25,8 +25,6 @@ interface HeaderProps {
 export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenExport, user }: HeaderProps) {
   const {
     tasks,
-    theme,
-    toggleTheme,
     groupBy,
     setGroupBy,
     selectedStatuses,
@@ -121,10 +119,6 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
               <SettingsIcon className="h-4 w-4" />
             </Button>
           ) : null}
-
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={toggleTheme} title="Тема">
-            {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-          </Button>
 
           <Button
             variant="secondary"

@@ -30,7 +30,6 @@ const empty = (): Task => ({
   startDate: "",
   endDate: "",
   approvedHours: null,
-  spentHours: null,
   link: "",
   deadlineConfirmed: false,
   nextActionAt: null,
@@ -232,7 +231,7 @@ export function TaskForm({
                 />
               </label>
               <label>
-                Окончание
+                Плановая дата релиза
                 <input
                   type="date"
                   value={draft.endDate || ""}
@@ -261,23 +260,6 @@ export function TaskForm({
                   onChange={(e) =>
                     set(
                       "approvedHours",
-                      e.target.value === "" ? null : Number(e.target.value),
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Потрачено, ч
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  max="1000000"
-                  value={draft.spentHours ?? ""}
-                  placeholder="Неизвестно"
-                  onChange={(e) =>
-                    set(
-                      "spentHours",
                       e.target.value === "" ? null : Number(e.target.value),
                     )
                   }
@@ -387,14 +369,6 @@ export function TaskForm({
                 )}
               </div>
             </div>
-            <label className="check-label">
-              <input
-                type="checkbox"
-                checked={!!draft.hiddenFromGantt}
-                onChange={(e) => set("hiddenFromGantt", e.target.checked)}
-              />{" "}
-              Скрыть из Ганта только для меня
-            </label>
           </fieldset>
           {error && (
             <p role="alert" className="tracker-error">

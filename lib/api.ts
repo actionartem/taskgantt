@@ -127,7 +127,6 @@ function fromApiTask(t: ApiTask): Task {
     endDate: ymdFromIso(t.due_at),
     link: t.link_url ?? null,
     approvedHours: numberFromApi(t.approved_hours),
-    spentHours: numberFromApi(t.spent_hours),
     tags: (t.tags || []).map((x) => x.title),
     deadlineConfirmed: t.deadline_confirmed ?? false,
     nextActionAt: t.next_action_at, nextActionText: t.next_action_text,
@@ -151,7 +150,6 @@ function toApiCreate(input: CreateTaskInput) {
     due_at: isoFromYmd(input.endDate ?? null),
     link_url: input.link ?? null,
     approved_hours: input.approvedHours ?? null,
-    spent_hours: input.spentHours ?? null,
     tags: input.tags ?? [], deadline_confirmed: input.deadlineConfirmed ?? false,
     next_action_at: input.nextActionAt ?? null, next_action_text: input.nextActionText ?? null,
     reply_due_at: input.replyDueAt ?? null, waiting_for: input.waitingFor ?? null,
@@ -174,7 +172,6 @@ function toApiPatch(patch: PatchTaskInput) {
   if (patch.endDate !== undefined) out.due_at = isoFromYmd(patch.endDate ?? null)
   if (patch.link !== undefined) out.link_url = patch.link ?? null
   if (patch.approvedHours !== undefined) out.approved_hours = patch.approvedHours ?? null
-  if (patch.spentHours !== undefined) out.spent_hours = patch.spentHours ?? null
   if (patch.updatedBy !== undefined) out.updated_by = patch.updatedBy ?? null
   if (patch.tags !== undefined) out.tags = patch.tags
   if (patch.deadlineConfirmed !== undefined) out.deadline_confirmed = patch.deadlineConfirmed
@@ -224,7 +221,6 @@ export type TaskExportField =
   | "priority"
   | "assignee"
   | "approved_hours"
-  | "spent_hours"
   | "link_url"
   | "start_at"
   | "due_at"

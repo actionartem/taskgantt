@@ -21,7 +21,6 @@ import {
 interface AppContextType {
   tasks: Task[];
   settings: AppSettings;
-  theme: "light" | "dark";
   groupBy: GroupBy;
   selectedStatuses: TaskStatus[];
   lastRefresh: string | null;
@@ -34,7 +33,6 @@ interface AppContextType {
   deleteTask: (id: number) => Promise<void>;
   setSettings: (settings: React.SetStateAction<AppSettings>) => void;
   refreshFromApi: () => Promise<void>;
-  toggleTheme: () => void;
   setGroupBy: (group: GroupBy) => void;
   toggleSelectedStatus: (status: TaskStatus) => void;
 }
@@ -48,31 +46,13 @@ function owner() {
     return "";
   }
 }
-function hiddenMap(): Record<string, boolean> {
-  try {
-    const key = `st_hidden:${owner()}`,
-      saved = localStorage.getItem(key);
-    if (saved) return JSON.parse(saved);
-    const migrated = Object.fromEntries(
-      storage
-        .getTasks()
-        .filter((t) => t.hiddenFromGantt)
-        .map((t) => [t.id, true]),
-    );
-    localStorage.setItem(key, JSON.stringify(migrated));
-    return migrated;
-  } catch {
-    return {};
-  }
-}
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([]),
     [settings, setSettings] = useState<AppSettings>({
       executors: [],
       tags: [],
     });
-  const [theme, setTheme] = useState<"light" | "dark">("light"),
-    [groupBy, setGroupBy] = useState<GroupBy>("none");
+  const [groupBy, setGroupBy] = useState<GroupBy>("none");
   const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([]);
   const [lastRefresh, setLastRefresh] = useState<string | null>(null),
     [refreshError, setRefreshError] = useState<string | null>(null),
@@ -90,8 +70,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         fetchTasks(),
       ]);
       if (seq !== sequence.current || user !== owner()) return;
-      const hidden = hiddenMap();
-      setTasks(data.map((t) => ({ ...t, hiddenFromGantt: !!hidden[t.id] })));
+      setTasks(data);
       setSettings({
         executors: users.map((u) => ({
           id: Number(u.id),
@@ -113,9 +92,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
   useEffect(() => {
-    const saved = storage.getTheme();
-    setTheme(saved);
-    document.documentElement.classList.toggle("dark", saved === "dark");
+    storage.saveTheme("light");
+    document.documentElement.classList.remove("dark");
     const refresh = () => {
       if (document.visibilityState === "visible" && owner())
         void refreshFromApi().catch(() => {});
@@ -139,15 +117,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const mergeSaved = (saved: Task) => {
     sequence.current++;
-    const hidden = hiddenMap();
     setTasks((prev) =>
       prev.some((t) => t.id === saved.id)
         ? prev.map((t) =>
-            t.id === saved.id
-              ? { ...saved, hiddenFromGantt: !!hidden[saved.id] }
-              : t,
+            t.id === saved.id ? saved : t,
           )
-        : [...prev, { ...saved, hiddenFromGantt: !!hidden[saved.id] }],
+        : [...prev, saved],
     );
     setLoading(false);
   };
@@ -160,16 +135,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const updateTask = async (id: number, updates: Partial<Task>) => {
     const user = owner();
-    if (updates.hiddenFromGantt !== undefined) {
-      const map = hiddenMap();
-      map[id] = updates.hiddenFromGantt;
-      localStorage.setItem(`st_hidden:${owner()}`, JSON.stringify(map));
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === id ? { ...t, hiddenFromGantt: updates.hiddenFromGantt } : t,
-        ),
-      );
-    }
     const patch = { ...updates };
     delete patch.hiddenFromGantt;
     delete patch.assigneeName;
@@ -188,18 +153,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     sequence.current++;
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    storage.saveTheme(next);
-    document.documentElement.classList.toggle("dark", next === "dark");
-  };
   return (
     <AppContext.Provider
       value={{
         tasks,
         settings,
-        theme,
         groupBy,
         selectedStatuses,
         lastRefresh,
@@ -212,7 +170,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteTask,
         setSettings,
         refreshFromApi,
-        toggleTheme,
         setGroupBy,
         toggleSelectedStatus: (status) =>
           setSelectedStatuses((prev) =>

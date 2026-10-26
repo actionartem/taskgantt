@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
-import { Moon, Sun, UserRound, RefreshCw, EyeOff, Eye } from "lucide-react";
+import { UserRound, RefreshCw, Pencil, ExternalLink } from "lucide-react";
 import { useApp } from "@/contexts/app-context";
 import { request } from "@/lib/api";
 import {
@@ -11,7 +11,9 @@ import {
   type GroupBy,
 } from "@/lib/types";
 import type { JiraSnapshot } from "@/lib/tracker-types";
-import { DocumentsView, AttentionView, HoursView } from "./tracker-views";
+import { DocumentsView, AttentionView } from "./tracker-views";
+import { HoursView } from "./hours-view";
+import { russianCalendarDay } from "@/lib/russian-calendar";
 
 const colors: Record<TaskStatus, string> = {
   "не в работе": "#8B8579",
@@ -58,8 +60,6 @@ export function TrackerWorkspace({
   const {
     tasks,
     settings,
-    theme,
-    toggleTheme,
     groupBy,
     setGroupBy,
     updateTask,
@@ -73,7 +73,7 @@ export function TrackerWorkspace({
     >("tasks"),
     [mobileView, setMobileView] = useState<"list" | "gantt">("list");
   const [search, setSearch] = useState(""),
-    [status, setStatus] = useState(""),
+    [statuses, setStatuses] = useState<TaskStatus[] | null>(null),
     [assignee, setAssignee] = useState(""),
     [priority, setPriority] = useState(""),
     [tag, setTag] = useState("");
@@ -91,6 +91,16 @@ export function TrackerWorkspace({
   const [width, setWidth] = useState(640),
     [scale, setScale] = useState<"day" | "week" | "month">("day"),
     [filtersOpen, setFiltersOpen] = useState(false);
+  const resizing = useRef<{ x: number; width: number } | null>(null);
+  useEffect(() => {
+    const saved = Number(localStorage.getItem("st_list_width"));
+    if (saved >= 320 && saved <= 3000) setWidth(saved);
+  }, []);
+  const changeWidth = (value: number) => {
+    const next = Math.max(320, Math.min(value, viewportWidth - 280));
+    setWidth(next);
+    localStorage.setItem("st_list_width", String(next));
+  };
   const [selected, setSelected] = useState<number | null>(null),
     [error, setError] = useState(""),
     [pending, setPending] = useState<{
@@ -125,7 +135,7 @@ export function TrackerWorkspace({
             `${t.id} ${t.title} ${t.tags.join(" ")} ${j?.issue_key || ""}`
               .toLowerCase()
               .includes(search.toLowerCase())) &&
-          (!status || t.status === status) &&
+          (statuses === null || statuses.includes(t.status)) &&
           (!assignee ||
             (assignee === "none"
               ? !t.assigneeId
@@ -138,11 +148,12 @@ export function TrackerWorkspace({
               ? !!j?.checked_at && !j.assignee
               : j?.assignee === jiraAssignee))
         );
-      }),
+      }).sort((a, b) => Number(a.status === "завершена") - Number(b.status === "завершена") ||
+        (a.startDate || "9999").localeCompare(b.startDate || "9999") || a.id - b.id),
     [
       tasks,
       search,
-      status,
+      statuses,
       assignee,
       priority,
       tag,
@@ -154,7 +165,7 @@ export function TrackerWorkspace({
   const rows = useMemo(() => {
     if (groupBy === "none") return visible.map((task) => ({ task, group: "" }));
     const groups = new Map<string, Task[]>();
-    visible.forEach((t) => {
+    visible.filter(t => t.status !== "завершена").forEach((t) => {
       const key =
         groupBy === "status"
           ? t.status
@@ -164,6 +175,8 @@ export function TrackerWorkspace({
               "Без исполнителя";
       groups.set(key, [...(groups.get(key) || []), t]);
     });
+    const completed = visible.filter(t => t.status === "завершена");
+    if (completed.length) groups.set("Завершённые", completed);
     return [...groups].flatMap(([group, items]) => [
       { group: `${group} · ${items.length}`, task: null as Task | null },
       ...items.map((task) => ({ task, group: "" })),
@@ -179,18 +192,22 @@ export function TrackerWorkspace({
         end: Math.max(today + 30, ...dates) + 4,
       };
     }, [visible, today]);
-  const listWidth = Math.min(width, Math.max(380, viewportWidth - 380));
+  const listWidth = Math.min(width, Math.max(320, viewportWidth - 280));
   const initialScroll = useRef(false);
   const count = range.end - range.start + 1,
     effectiveScale = count > 1500 && scale === "day" ? "week" : scale,
     cell = effectiveScale === "day" ? 30 : effectiveScale === "week" ? 9 : 3,
     timelineWidth = count * cell;
   useEffect(() => {
+    if (view !== "tasks") { initialScroll.current = false; return; }
     if (tasks.length && !initialScroll.current && scroll.current) {
-      scroll.current.scrollLeft = Math.max(0, (today - range.start - 7) * cell);
+      scroll.current.scrollLeft = Math.max(0, (today - range.start - (viewportWidth < 768 ? 1 : 7)) * cell);
       initialScroll.current = true;
     }
-  }, [tasks.length, today, range.start, cell]);
+    if (viewportWidth < 768 && mobileView === "gantt" && scroll.current) {
+      scroll.current.scrollLeft = Math.max(0, (today - range.start - 1) * cell);
+    }
+  }, [tasks.length, today, range.start, cell, view, mobileView, viewportWidth]);
   const calendar = useMemo(() => {
     const months: Array<{ label: string; left: number; width: number }> = [],
       ticks: Array<{
@@ -199,6 +216,8 @@ export function TrackerWorkspace({
         left: number;
         width: number;
         today: boolean;
+        off: boolean;
+        title: string;
       }> = [];
     for (let d = range.start; d <= range.end; d++) {
       const dt = new Date(d * 86400000),
@@ -232,14 +251,29 @@ export function TrackerWorkspace({
                 ? 7 * cell
                 : 28 * cell,
           today: d === today,
+          off: effectiveScale === "day" && russianCalendarDay(ymd(d)).off,
+          title: `${ymd(d)} · ${russianCalendarDay(ymd(d)).label}`,
         });
     }
-    return { months, ticks };
+    const offSegments: string[] = [];
+    let offStart: number | null = null;
+    let unconfirmed = false;
+    for (let d = range.start; d <= range.end + 1; d++) {
+      const info = russianCalendarDay(ymd(d));
+      if (d <= range.end && !info.confirmed) unconfirmed = true;
+      if (d <= range.end && info.off) offStart ??= d;
+      else if (offStart !== null) {
+        const from = (offStart - range.start) * cell, to = (d - range.start) * cell;
+        offSegments.push(`transparent ${from}px, var(--st-weekend) ${from}px, var(--st-weekend) ${to}px, transparent ${to}px`);
+        offStart = null;
+      }
+    }
+    return { months, ticks, unconfirmed, background: offSegments.length ? `linear-gradient(to right, ${offSegments.join(", ")})` : "none" };
   }, [range, cell, effectiveScale, today]);
   const gridStyle: CSSProperties = {
     width: timelineWidth,
     "--day-width": `${cell}px`,
-    "--week-offset": `${((6 - new Date(range.start * 86400000).getUTCDay() + 7) % 7) * cell}px`,
+    "--calendar-off": calendar.background,
     "--today-x": `${(today - range.start) * cell}px`,
   } as CSSProperties;
   const doAction = async (fn: () => Promise<void>) => {
@@ -298,11 +332,9 @@ export function TrackerWorkspace({
   const totals = visible.reduce(
     (a, t) => ({
       approved: a.approved + (t.approvedHours || 0),
-      spent: a.spent + (t.spentHours || 0),
       noApproved: a.noApproved + Number(t.approvedHours == null),
-      noSpent: a.noSpent + Number(t.spentHours == null),
     }),
-    { approved: 0, spent: 0, noApproved: 0, noSpent: 0 },
+    { approved: 0, noApproved: 0 },
   );
   const openTask = (t: Task) => {
     setSelected(t.id);
@@ -310,7 +342,7 @@ export function TrackerWorkspace({
   };
   const filterCount = [
     search,
-    status,
+    statuses === null ? "" : "statuses",
     assignee,
     priority,
     tag,
@@ -356,13 +388,6 @@ export function TrackerWorkspace({
         <div className="header-actions">
           <button onClick={onExport}>Excel</button>
           <button onClick={onSettings}>Настройки</button>
-          <button
-            onClick={toggleTheme}
-            aria-label={theme === "light" ? "Тёмная тема" : "Светлая тема"}
-            title="Переключить тему"
-          >
-            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
-          </button>
           <button onClick={onProfile} aria-label="Профиль">
             <UserRound size={18} />
           </button>
@@ -459,16 +484,6 @@ export function TrackerWorkspace({
               onChange={(e) => setSearch(e.target.value)}
             />
             <select
-              aria-label="Статус"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="">Статус: все</option>
-              {Object.keys(STATUS_COLORS).map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-            <select
               aria-label="Исполнитель"
               value={assignee}
               onChange={(e) => setAssignee(e.target.value)}
@@ -524,18 +539,6 @@ export function TrackerWorkspace({
               ))}
             </div>
             <div className="filter-second-line">
-              <label className="width-control">
-                Ширина списка{" "}
-                <input
-                  aria-label="Ширина списка"
-                  type="range"
-                  min="380"
-                  max="900"
-                  step="20"
-                  value={width}
-                  onChange={(e) => setWidth(Number(e.target.value))}
-                />
-              </label>
               <label>
                 <input
                   type="checkbox"
@@ -544,10 +547,6 @@ export function TrackerWorkspace({
                 />{" "}
                 {view === "hours" ? "Фильтры Jira" : "Поля Jira"}
               </label>
-              <span className="gantt-only">
-                Скрыты из Ганта:{" "}
-                {visible.filter((t) => t.hiddenFromGantt).length}
-              </span>
               <button
                 className="gantt-only"
                 onClick={() =>
@@ -559,11 +558,12 @@ export function TrackerWorkspace({
               >
                 Сегодня
               </button>
+              <span className="gantt-only calendar-legend" title="Федеральный производственный календарь, пятидневная неделя. Переносы проверены для 2024–2027 годов.">Выходные РФ <i aria-hidden="true" /></span>
               {filterCount > 0 && (
                 <button
                   onClick={() => {
                     setSearch("");
-                    setStatus("");
+                    setStatuses(null);
                     setAssignee("");
                     setPriority("");
                     setTag("");
@@ -608,17 +608,23 @@ export function TrackerWorkspace({
               </div>
             )}
           </section>
+          <div className="status-filters" role="group" aria-label="Показать задачи по статусам">
+            <button aria-pressed={statuses === null} onClick={() => setStatuses(null)}>Все</button>
+            {(Object.keys(colors) as TaskStatus[]).map((s) => (
+              <button key={s} aria-pressed={statuses === null || statuses.includes(s)}
+                style={{ "--status": colors[s] } as CSSProperties}
+                onClick={() => setStatuses((prev) => prev === null ? [s] : prev.includes(s) ? prev.filter((v) => v !== s) : [...prev, s])}>
+                <i aria-hidden="true" />{s}
+              </button>
+            ))}
+          </div>
           <div className="tracker-totals">
             <span>По фильтру:</span>
             <span>
               Согласовано: <b>{totals.approved.toLocaleString("ru-RU")} ч</b>
             </span>
-            <span>
-              Потрачено: <b>{totals.spent.toLocaleString("ru-RU")} ч</b>
-            </span>
             <span className="muted">
-              без оценки: {totals.noApproved} · без факта: {totals.noSpent}{" "}
-              (неизвестно ≠ 0 ч)
+              без оценки: {totals.noApproved}
             </span>
           </div>
           {view === "tasks" && count > 1500 && scale === "day" && (
@@ -627,9 +633,11 @@ export function TrackerWorkspace({
               меняются.
             </p>
           )}
+          {view === "tasks" && calendar.unconfirmed && <p className="tracker-hint">Для годов вне 2024–2027 показаны обычные выходные и федеральные праздники; переносы ещё не загружены.</p>}
           {view === "hours" ? (
             <HoursView tasks={visible} onOpenTask={openTask} />
           ) : (
+            <div className="tracker-board">
             <div
               ref={scroll}
               className={`tracker-grid mobile-${mobileView} ${listWidth < 600 ? "narrow-list" : ""}`}
@@ -675,7 +683,8 @@ export function TrackerWorkspace({
                         {calendar.ticks.map((t) => (
                           <span
                             key={t.left}
-                            className={t.today ? "is-today" : ""}
+                            className={`${t.today ? "is-today" : ""} ${t.off ? "is-day-off" : ""}`}
+                            title={t.title}
                             style={{ left: t.left, width: t.width }}
                           >
                             {t.label}
@@ -707,23 +716,27 @@ export function TrackerWorkspace({
                         start && end
                           ? Math.max(cell, (day(end) - day(start) + 1) * cell)
                           : 0,
-                      j = jiraMap.get(task.id);
+                      j = jiraMap.get(task.id),
+                      jiraUrl = /^https?:\/\//i.test(j?.url || task.link || "") ? (j?.url || task.link)! : undefined;
                     return (
                       <div
                         className={`tracker-row ${selected === task.id ? "selected" : ""} ${showJira ? "with-jira" : ""}`}
                         key={task.id}
                       >
                         <div className="task-side">
-                          <button
+                          <a
                             className="task-id"
-                            onClick={() => openTask(task)}
+                            href={jiraUrl} target="_blank" rel="noopener noreferrer"
+                            aria-label={`Открыть задачу ${task.id} в Jira`}
+                            aria-disabled={!jiraUrl} title={jiraUrl ? "Открыть в Jira" : "Ссылка на Jira не указана"}
                           >
                             {task.id}
-                          </button>
-                          <button
+                          </a>
+                          <a
                             className="task-title"
-                            onClick={() => openTask(task)}
-                            title={task.title}
+                            href={jiraUrl} target="_blank" rel="noopener noreferrer"
+                            aria-disabled={!jiraUrl}
+                            title={`${task.title} · ${jiraUrl ? "Открыть в Jira" : "Ссылка на Jira не указана"}`}
                           >
                             {task.title}
                             {showJira && (
@@ -733,7 +746,7 @@ export function TrackerWorkspace({
                                   : "Jira не связана"}
                               </small>
                             )}
-                          </button>
+                          </a>
                           <select
                             aria-label={`Статус задачи ${task.id}`}
                             disabled={!canEdit}
@@ -772,29 +785,16 @@ export function TrackerWorkspace({
                             {short(task.startDate)}–{short(task.endDate)}
                           </span>
                           <button
-                            className="hide-button"
-                            aria-label={`${task.hiddenFromGantt ? "Показать" : "Скрыть"} задачу ${task.id} в Ганте`}
-                            onClick={() =>
-                              void doAction(() =>
-                                updateTask(task.id, {
-                                  hiddenFromGantt: !task.hiddenFromGantt,
-                                }),
-                              )
-                            }
+                            className="edit-task-button"
+                            aria-label={`Редактировать задачу ${task.id}`}
+                            title="Редактировать карточку"
+                            onClick={() => openTask(task)}
                           >
-                            {task.hiddenFromGantt ? (
-                              <EyeOff size={14} />
-                            ) : (
-                              <Eye size={14} />
-                            )}
+                            <Pencil size={14} />
                           </button>
                         </div>
                         <div className="task-timeline" style={gridStyle}>
-                          {task.hiddenFromGantt ? (
-                            <span className="timeline-note">
-                              Скрыта из Ганта
-                            </span>
-                          ) : barWidth > 0 ? (
+                          {barWidth > 0 ? (
                             <>
                               <div
                                 className="gantt-bar"
@@ -830,6 +830,12 @@ export function TrackerWorkspace({
                                   }
                                 />
                               </div>
+                              <a className="bar-jira-link" href={jiraUrl} target="_blank" rel="noopener noreferrer"
+                                aria-label={`Открыть задачу ${task.id} в Jira из Ганта`} aria-disabled={!jiraUrl}
+                                title={jiraUrl ? "Открыть в Jira" : "Ссылка на Jira не указана"}
+                                style={{ left: left + barWidth + 4 }}>
+                                <ExternalLink size={14} />
+                              </a>
                               <button
                                 className="bar-date"
                                 style={
@@ -840,7 +846,7 @@ export function TrackerWorkspace({
                                           timelineWidth - left + 6,
                                         ),
                                       }
-                                    : { left: left + barWidth + 6 }
+                                    : { left: left + barWidth + 32 }
                                 }
                                 onClick={() => openTask(task)}
                               >
@@ -861,6 +867,16 @@ export function TrackerWorkspace({
                   })}
                 </div>
               )}
+            </div>
+            <div className="list-divider" role="separator" tabIndex={0} aria-label="Ширина списка задач"
+              aria-orientation="vertical" aria-valuemin={320} aria-valuemax={Math.max(320, viewportWidth - 280)} aria-valuenow={listWidth}
+              style={{ left: listWidth - 4 }}
+              onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); resizing.current = { x: e.clientX, width: listWidth }; }}
+              onPointerMove={(e) => { if (resizing.current) changeWidth(resizing.current.width + e.clientX - resizing.current.x); }}
+              onPointerUp={() => { resizing.current = null; }}
+              onPointerCancel={() => { resizing.current = null; }}
+              onKeyDown={(e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { e.preventDefault(); changeWidth(e.key === "Home" ? 320 : e.key === "End" ? viewportWidth - 280 : listWidth + (e.key === "ArrowRight" ? 20 : -20)); } }}
+            />
             </div>
           )}
           {view === "tasks" && pending && (
@@ -895,7 +911,6 @@ export function TrackerWorkspace({
         >
           <RefreshCw size={13} /> Обновить
         </button>
-        <span>Telegram выключен</span>
       </footer>
     </div>
   );
