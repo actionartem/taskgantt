@@ -280,13 +280,6 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
     });
     setSaving(false);
   };
-  const totals = visible.reduce(
-    (a, t) => ({
-      approved: a.approved + (t.approvedHours || 0),
-      noApproved: a.noApproved + Number(t.approvedHours == null),
-    }),
-    { approved: 0, noApproved: 0 },
-  );
   const openTask = (t: Task) => {
     onEdit(t);
   };
@@ -564,15 +557,6 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
                 <i aria-hidden="true" />{s}
               </button>
             ))}
-          </div>
-          <div className="tracker-totals">
-            <span>По фильтру:</span>
-            <span>
-              Согласовано: <b>{totals.approved.toLocaleString("ru-RU")} ч</b>
-            </span>
-            <span className="muted">
-              без оценки: {totals.noApproved}
-            </span>
           </div>
           </>}
           {view === "hours" ? (

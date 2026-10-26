@@ -499,19 +499,6 @@ button[aria-pressed="true"]:not(.status-chip) {
   background: var(--st-ink) !important;
   color: var(--st-surface) !important;
 }
-.tracker-totals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  padding: 9px 20px;
-  background: var(--st-surface2);
-  border-block: 1px solid var(--st-line);
-  font-size: 13px;
-  flex-shrink: 0;
-}
-.tracker-totals b {
-  font-family: var(--font-jbm);
-}
 .muted {
   color: var(--st-muted);
   font-size: 13px;
@@ -1205,10 +1192,6 @@ button[aria-pressed="true"]:not(.status-chip) {
   .tracker-tabs {
     padding: 0 8px;
   }
-  .tracker-totals {
-    padding: 8px 10px;
-    gap: 8px;
-  }
   .brand-cat {
     --brand-size: 62px;
   }
@@ -1288,14 +1271,6 @@ button[aria-pressed="true"]:not(.status-chip) {
   }
   .width-control {
     display: none !important;
-  }
-  .tracker-totals {
-    font-size: 11px;
-    gap: 4px 12px;
-  }
-  .tracker-totals .muted {
-    font-size: 11px;
-    width: 100%;
   }
   .mobile-list .timeline-content {
     min-width: 0 !important;
@@ -1575,7 +1550,6 @@ button[aria-pressed="true"]:not(.status-chip) {
 .calendar-ticks .is-today { box-shadow: inset 0 -3px var(--st-accent); }
 .calendar-legend { display: inline-flex; gap: 6px; align-items: center; color: var(--st-muted); font-size: 12px; }
 .calendar-legend i { width: 12px; height: 12px; background: var(--st-weekend); border: 1px solid var(--st-line); }
-.hours-mode .tracker-totals { display: none; }
 .hours-view { padding: 24px 28px; }
 .hours-toolbar, .hours-chart-heading, .hours-table-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
 .hours-toolbar h2 { font-size: 25px; margin: 0 0 5px; }
