@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { request, downloadDocument } from "@/lib/api";
 import type { TaskDocument } from "@/lib/tracker-types";
+import { useApp } from "@/contexts/app-context";
 
 export function DownloadLink({ doc }: { doc: TaskDocument }) {
   const [error, setError] = useState("");
@@ -9,6 +10,7 @@ export function DownloadLink({ doc }: { doc: TaskDocument }) {
 }
 
 export function ApprovedDocument({ taskId }: { taskId: number }) {
+  const { refreshFromApi } = useApp();
   const [doc, setDoc] = useState<TaskDocument | null>(null), [loading, setLoading] = useState(true);
   const [upload, setUpload] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [title, setTitle] = useState(""), [approvedDate, setApprovedDate] = useState(""), [link, setLink] = useState("");
@@ -39,6 +41,7 @@ export function ApprovedDocument({ taskId }: { taskId: number }) {
         document: { title, approved_at: new Date(approvedDate + "T00:00:00").toISOString(), approval_evidence: "Загружен пользователем как согласованный", source_url: link || null, file_name: file?.name, file_base64 },
       }) });
       await load(); setUpload(false); setFile(null); setTitle(""); setLink(""); setApprovedDate(""); resetKey();
+      void refreshFromApi().catch(() => {});
     } catch (e) { setError(e instanceof Error ? e.message : "Не удалось сохранить документ"); }
     finally { setBusy(false); }
   };
