@@ -1,7 +1,7 @@
 "use client";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
-import { UserRound, RefreshCw, Pencil, ExternalLink } from "lucide-react";
+import { UserRound, Pencil, ExternalLink } from "lucide-react";
 import { useApp } from "@/contexts/app-context";
 import { request } from "@/lib/api";
 import {
@@ -790,12 +790,6 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
               ? `Данные: ${new Date(lastRefresh).toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow" })} МСК`
               : "Данные ещё не загружены"}
         </span>
-        <button
-          onClick={() => void refreshFromApi().catch(() => {})}
-          disabled={loading}
-        >
-          <RefreshCw size={13} /> Обновить
-        </button>
       </footer>
     </div>
   );

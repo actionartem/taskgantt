@@ -823,16 +823,6 @@ button[aria-pressed="true"]:not(.status-chip) {
   font-size: 11px;
   color: var(--st-muted);
 }
-.tracker-footer button:not(.x) {
-  min-height: 25px;
-  font-size: 11px;
-  border: 0;
-  background: none;
-  padding: 0;
-}
-.tracker-footer span:last-child {
-  margin-left: auto;
-}
 .tracker-error {
   color: #9b251e;
   background: #fdecea;
@@ -1361,9 +1351,6 @@ button[aria-pressed="true"]:not(.status-chip) {
     font-size: 10px;
     gap: 8px;
     padding: 4px 10px;
-  }
-  .tracker-footer span:last-child {
-    display: none;
   }
   .tracker-section {
     padding: 12px;
