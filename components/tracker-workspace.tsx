@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import { UserRound, RefreshCw, Pencil, ExternalLink } from "lucide-react";
 import { useApp } from "@/contexts/app-context";
@@ -13,6 +13,8 @@ import {
 import type { JiraSnapshot } from "@/lib/tracker-types";
 import { DocumentsView, AttentionView } from "./tracker-views";
 import { HoursView } from "./hours-view";
+import { buildGanttCalendar } from "@/lib/gantt-calendar";
+import { GanttCalendarHeader } from "./gantt-calendar-header";
 import { russianCalendarDay } from "@/lib/russian-calendar";
 
 const colors: Record<TaskStatus, string> = {
@@ -49,7 +51,7 @@ type Drag = {
   end: number;
   mode: "move" | "start" | "end";
 };
-export function TrackerWorkspace({
+export const TrackerWorkspace = memo(function TrackerWorkspace({
   onCreate,
   onEdit,
   onSettings,
@@ -81,17 +83,20 @@ export function TrackerWorkspace({
     [jiraAssignee, setJiraAssignee] = useState(""),
     [showJira, setShowJira] = useState(false),
     [jira, setJira] = useState<JiraSnapshot[]>([]);
-  const [viewportWidth, setViewportWidth] = useState(1440);
+  const [viewportWidth, setViewportWidth] = useState(() => typeof window === "undefined" ? 1440 : window.innerWidth);
   useEffect(() => {
     const resize = () => setViewportWidth(window.innerWidth);
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, []);
-  const [width, setWidth] = useState(640),
+  const [width, setWidth] = useState(() => { if (typeof window === "undefined") return 640; const saved = Number(localStorage.getItem("st_list_width")); return saved >= 320 && saved <= 3000 ? saved : 640; }),
     [scale, setScale] = useState<"day" | "week" | "month">("day"),
     [filtersOpen, setFiltersOpen] = useState(false);
-  const resizing = useRef<{ x: number; width: number } | null>(null);
+  const resizing = useRef<{ x: number; width: number; next: number } | null>(null);
+  const board = useRef<HTMLDivElement>(null);
+  const resizeFrame = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(resizeFrame.current), []);
   useEffect(() => {
     const saved = Number(localStorage.getItem("st_list_width"));
     if (saved >= 320 && saved <= 3000) setWidth(saved);
@@ -115,7 +120,7 @@ export function TrackerWorkspace({
     let live = true;
     request<{ items: JiraSnapshot[] }>("/jira")
       .then((r) => {
-        if (live) setJira(r.items);
+        if (live) setJira(prev => JSON.stringify(prev) === JSON.stringify(r.items) ? prev : r.items);
       })
       .catch(() => {});
     return () => {
@@ -194,86 +199,31 @@ export function TrackerWorkspace({
     }, [visible, today]);
   const listWidth = Math.min(width, Math.max(320, viewportWidth - 280));
   const initialScroll = useRef(false);
+  const previousAxis = useRef<{ start: number; cell: number; mobileView: string; scrollLeft: number } | null>(null);
   const count = range.end - range.start + 1,
     effectiveScale = count > 1500 && scale === "day" ? "week" : scale,
     cell = effectiveScale === "day" ? 30 : effectiveScale === "week" ? 9 : 3,
     timelineWidth = count * cell;
-  useEffect(() => {
-    if (view !== "tasks") { initialScroll.current = false; return; }
+  useLayoutEffect(() => {
+    if (view !== "tasks") { initialScroll.current = false; previousAxis.current = null; return; }
+    const element = scroll.current;
+    if (!element) return;
     if (tasks.length && !initialScroll.current && scroll.current) {
       scroll.current.scrollLeft = Math.max(0, (today - range.start - (viewportWidth < 768 ? 1 : 7)) * cell);
       initialScroll.current = true;
+    } else if (previousAxis.current && (previousAxis.current.start !== range.start || previousAxis.current.cell !== cell)) {
+      const anchor = previousAxis.current.start + previousAxis.current.scrollLeft / previousAxis.current.cell;
+      element.scrollLeft = Math.max(0, (anchor - range.start) * cell);
     }
-    if (viewportWidth < 768 && mobileView === "gantt" && scroll.current) {
+    if (viewportWidth < 768 && mobileView === "gantt" && previousAxis.current?.mobileView !== mobileView && scroll.current) {
       scroll.current.scrollLeft = Math.max(0, (today - range.start - 1) * cell);
     }
+    previousAxis.current = { start: range.start, cell, mobileView, scrollLeft: element.scrollLeft };
   }, [tasks.length, today, range.start, cell, view, mobileView, viewportWidth]);
-  const calendar = useMemo(() => {
-    const months: Array<{ label: string; left: number; width: number }> = [],
-      ticks: Array<{
-        label: string;
-        sub: string;
-        left: number;
-        width: number;
-        today: boolean;
-        off: boolean;
-        title: string;
-      }> = [];
-    for (let d = range.start; d <= range.end; d++) {
-      const dt = new Date(d * 86400000),
-        label = dt.toLocaleDateString("ru-RU", {
-          month: "long",
-          year: "numeric",
-          timeZone: "UTC",
-        });
-      if (months.at(-1)?.label === label)
-        months[months.length - 1].width += cell;
-      else months.push({ label, left: (d - range.start) * cell, width: cell });
-      if (
-        effectiveScale === "day" ||
-        (effectiveScale === "week" && dt.getUTCDay() === 1) ||
-        (effectiveScale === "month" && dt.getUTCDate() === 1)
-      )
-        ticks.push({
-          label: String(dt.getUTCDate()),
-          sub:
-            effectiveScale === "day"
-              ? dt.toLocaleDateString("ru-RU", {
-                  weekday: "short",
-                  timeZone: "UTC",
-                })
-              : short(ymd(d)),
-          left: (d - range.start) * cell,
-          width:
-            effectiveScale === "day"
-              ? cell
-              : effectiveScale === "week"
-                ? 7 * cell
-                : 28 * cell,
-          today: d === today,
-          off: effectiveScale === "day" && russianCalendarDay(ymd(d)).off,
-          title: `${ymd(d)} · ${russianCalendarDay(ymd(d)).label}`,
-        });
-    }
-    const offSegments: string[] = [];
-    let offStart: number | null = null;
-    let unconfirmed = false;
-    for (let d = range.start; d <= range.end + 1; d++) {
-      const info = russianCalendarDay(ymd(d));
-      if (d <= range.end && !info.confirmed) unconfirmed = true;
-      if (d <= range.end && info.off) offStart ??= d;
-      else if (offStart !== null) {
-        const from = (offStart - range.start) * cell, to = (d - range.start) * cell;
-        offSegments.push(`transparent ${from}px, var(--st-weekend) ${from}px, var(--st-weekend) ${to}px, transparent ${to}px`);
-        offStart = null;
-      }
-    }
-    return { months, ticks, unconfirmed, background: offSegments.length ? `linear-gradient(to right, ${offSegments.join(", ")})` : "none" };
-  }, [range, cell, effectiveScale, today]);
+  const calendar = useMemo(() => buildGanttCalendar(range, cell, effectiveScale, today, russianCalendarDay), [range, cell, effectiveScale, today]);
   const gridStyle: CSSProperties = {
     width: timelineWidth,
     "--day-width": `${cell}px`,
-    "--calendar-off": calendar.background,
     "--today-x": `${(today - range.start) * cell}px`,
   } as CSSProperties;
   const doAction = async (fn: () => Promise<void>) => {
@@ -337,7 +287,6 @@ export function TrackerWorkspace({
     { approved: 0, noApproved: 0 },
   );
   const openTask = (t: Task) => {
-    setSelected(t.id);
     onEdit(t);
   };
   const filterCount = [
@@ -383,7 +332,7 @@ export function TrackerWorkspace({
             year: "numeric",
           })}
           <br />
-          {visible.length} из {tasks.length} задач
+          {view === "tasks" ? visible.length : tasks.length} из {tasks.length} задач
         </div>
         <div className="header-actions">
           <button onClick={onExport}>Excel</button>
@@ -456,6 +405,7 @@ export function TrackerWorkspace({
         />
       ) : (
         <>
+          {view === "tasks" && <>
           <div className="mobile-controls">
             <button
               aria-pressed={mobileView === "list"}
@@ -531,7 +481,7 @@ export function TrackerWorkspace({
               {(["day", "week", "month"] as const).map((s, i) => (
                 <button
                   key={s}
-                  aria-pressed={scale === s}
+                  aria-pressed={effectiveScale === s}
                   onClick={() => setScale(s)}
                 >
                   {["Дни", "Недели", "Месяцы"][i]}
@@ -545,7 +495,7 @@ export function TrackerWorkspace({
                   checked={showJira}
                   onChange={(e) => setShowJira(e.target.checked)}
                 />{" "}
-                {view === "hours" ? "Фильтры Jira" : "Поля Jira"}
+                Поля Jira
               </label>
               <button
                 className="gantt-only"
@@ -602,9 +552,6 @@ export function TrackerWorkspace({
                     <option key={s}>{s}</option>
                   ))}
                 </select>
-                <span>
-                  Снимки Jira передаёт агент; локальные поля независимы.
-                </span>
               </div>
             )}
           </section>
@@ -613,7 +560,7 @@ export function TrackerWorkspace({
             {(Object.keys(colors) as TaskStatus[]).map((s) => (
               <button key={s} aria-pressed={statuses === null || statuses.includes(s)}
                 style={{ "--status": colors[s] } as CSSProperties}
-                onClick={() => setStatuses((prev) => prev === null ? [s] : prev.includes(s) ? prev.filter((v) => v !== s) : [...prev, s])}>
+                onClick={() => setStatuses((prev) => prev === null ? [s] : prev.includes(s) ? (prev.length === 1 ? null : prev.filter((v) => v !== s)) : [...prev, s])}>
                 <i aria-hidden="true" />{s}
               </button>
             ))}
@@ -627,21 +574,15 @@ export function TrackerWorkspace({
               без оценки: {totals.noApproved}
             </span>
           </div>
-          {view === "tasks" && count > 1500 && scale === "day" && (
-            <p className="tracker-hint">
-              Для длинного периода включён недельный масштаб. Даты задач не
-              меняются.
-            </p>
-          )}
-          {view === "tasks" && calendar.unconfirmed && <p className="tracker-hint">Для годов вне 2024–2027 показаны обычные выходные и федеральные праздники; переносы ещё не загружены.</p>}
+          </>}
           {view === "hours" ? (
-            <HoursView tasks={visible} onOpenTask={openTask} />
+            <HoursView tasks={tasks} onOpenTask={openTask} />
           ) : (
-            <div className="tracker-board">
+            <div className="tracker-board" ref={board} style={{ "--list-width": `${listWidth}px`, "--calendar-off": calendar.background } as CSSProperties}>
             <div
               ref={scroll}
+              onScroll={(e) => { if (previousAxis.current) previousAxis.current.scrollLeft = e.currentTarget.scrollLeft; }}
               className={`tracker-grid mobile-${mobileView} ${listWidth < 600 ? "narrow-list" : ""}`}
-              style={{ "--list-width": `${listWidth}px` } as CSSProperties}
             >
               {loading && !tasks.length ? (
                 <p className="empty-state">Загружаю задачи…</p>
@@ -663,36 +604,8 @@ export function TrackerWorkspace({
                       <span>ID</span>
                       <span>Задача</span>
                       <span>Статус</span>
-                      <span className="row-date">Срок</span>
                     </div>
-                    <div
-                      className="timeline-head"
-                      style={{ width: timelineWidth }}
-                    >
-                      <div className="calendar-months">
-                        {calendar.months.map((m) => (
-                          <span
-                            key={m.label}
-                            style={{ left: m.left, width: m.width }}
-                          >
-                            <b className="calendar-month-label">{m.label}</b>
-                          </span>
-                        ))}
-                      </div>
-                      <div className="calendar-ticks">
-                        {calendar.ticks.map((t) => (
-                          <span
-                            key={t.left}
-                            className={`${t.today ? "is-today" : ""} ${t.off ? "is-day-off" : ""}`}
-                            title={t.title}
-                            style={{ left: t.left, width: t.width }}
-                          >
-                            {t.label}
-                            <small>{t.today ? "сег" : t.sub}</small>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                    <GanttCalendarHeader calendar={calendar} width={timelineWidth} scroll={scroll} />
                   </div>
                   {rows.map((row, index) => {
                     const task = row.task;
@@ -769,21 +682,6 @@ export function TrackerWorkspace({
                               <option key={s}>{s}</option>
                             ))}
                           </select>
-                          <span
-                            className="assignee-avatar"
-                            title={
-                              settings.executors.find(
-                                (e) => e.id === task.assigneeId,
-                              )?.name || "Не назначен"
-                            }
-                          >
-                            {settings.executors
-                              .find((e) => e.id === task.assigneeId)
-                              ?.name.slice(0, 1) || "?"}
-                          </span>
-                          <span className="row-date">
-                            {short(task.startDate)}–{short(task.endDate)}
-                          </span>
                           <button
                             className="edit-task-button"
                             aria-label={`Редактировать задачу ${task.id}`}
@@ -836,22 +734,6 @@ export function TrackerWorkspace({
                                 style={{ left: left + barWidth + 4 }}>
                                 <ExternalLink size={14} />
                               </a>
-                              <button
-                                className="bar-date"
-                                style={
-                                  left + barWidth + 130 > timelineWidth
-                                    ? {
-                                        right: Math.max(
-                                          0,
-                                          timelineWidth - left + 6,
-                                        ),
-                                      }
-                                    : { left: left + barWidth + 32 }
-                                }
-                                onClick={() => openTask(task)}
-                              >
-                                {short(start)} → {short(end)}
-                              </button>
                             </>
                           ) : (
                             <button
@@ -870,11 +752,11 @@ export function TrackerWorkspace({
             </div>
             <div className="list-divider" role="separator" tabIndex={0} aria-label="Ширина списка задач"
               aria-orientation="vertical" aria-valuemin={320} aria-valuemax={Math.max(320, viewportWidth - 280)} aria-valuenow={listWidth}
-              style={{ left: listWidth - 4 }}
-              onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); resizing.current = { x: e.clientX, width: listWidth }; }}
-              onPointerMove={(e) => { if (resizing.current) changeWidth(resizing.current.width + e.clientX - resizing.current.x); }}
-              onPointerUp={() => { resizing.current = null; }}
-              onPointerCancel={() => { resizing.current = null; }}
+              style={{ left: "calc(var(--list-width) - 4px)" }}
+              onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); resizing.current = { x: e.clientX, width: listWidth, next: listWidth }; }}
+              onPointerMove={(e) => { if (resizing.current) { resizing.current.next = Math.max(320, Math.min(resizing.current.width + e.clientX - resizing.current.x, viewportWidth - 280)); if (!resizeFrame.current) resizeFrame.current = requestAnimationFrame(() => { resizeFrame.current = 0; if (resizing.current) { board.current?.style.setProperty("--list-width", `${resizing.current.next}px`); scroll.current?.classList.toggle("narrow-list", resizing.current.next < 600); } }); } }}
+              onPointerUp={() => { cancelAnimationFrame(resizeFrame.current); resizeFrame.current = 0; if (resizing.current) changeWidth(resizing.current.next); resizing.current = null; }}
+              onPointerCancel={() => { cancelAnimationFrame(resizeFrame.current); resizeFrame.current = 0; board.current?.style.setProperty("--list-width", `${listWidth}px`); resizing.current = null; }}
               onKeyDown={(e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) { e.preventDefault(); changeWidth(e.key === "Home" ? 320 : e.key === "End" ? viewportWidth - 280 : listWidth + (e.key === "ArrowRight" ? 20 : -20)); } }}
             />
             </div>
@@ -914,4 +796,4 @@ export function TrackerWorkspace({
       </footer>
     </div>
   );
-}
+});

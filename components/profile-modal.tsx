@@ -173,9 +173,7 @@ export function ProfileModal({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Профиль пользователя</DialogTitle>
-          <DialogDescription>
-            Профиль и пароль. Telegram временно выключен.
-          </DialogDescription>
+          <DialogDescription className="sr-only">Настройки профиля</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

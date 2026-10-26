@@ -1,6 +1,7 @@
 "use client";
-import { useCallback, useEffect, useState, useRef } from "react";
-import { request, downloadDocument } from "@/lib/api";
+import { memo, useCallback, useEffect, useState, useRef } from "react";
+import { ApprovedDocument, DownloadLink } from "./approved-document";
+import { request } from "@/lib/api";
 import { useApp } from "@/contexts/app-context";
 import {
   Dialog,
@@ -10,7 +11,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  DOCUMENT_KINDS,
   displayTime,
   displayDays,
   type TaskDocument,
@@ -54,32 +54,6 @@ const fieldLabel = (s: string) =>
     approval_evidence: "Основание согласования",
     jira_link: "Связь с Jira",
   })[s] || s;
-function DownloadLink({ doc }: { doc: TaskDocument }) {
-  const [error, setError] = useState("");
-  return (
-    <>
-      {doc.file_size ? (
-        <button
-          type="button"
-          onClick={() =>
-            void downloadDocument(doc).catch((e) => setError(errorText(e)))
-          }
-        >
-          Скачать
-        </button>
-      ) : doc.source_url ? (
-        <a href={doc.source_url} target="_blank" rel="noreferrer">
-          Открыть источник ↗
-        </a>
-      ) : null}
-      {error && (
-        <span role="alert" className="tracker-error">
-          {error}
-        </span>
-      )}
-    </>
-  );
-}
 export function DocumentsView({
   onOpenTask,
 }: {
@@ -87,15 +61,13 @@ export function DocumentsView({
 }) {
   const [docs, setDocs] = useState<TaskDocument[]>([]),
     [search, setSearch] = useState(""),
-    [kind, setKind] = useState(""),
-    [filter, setFilter] = useState(""),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true);
   const { tasks, lastRefresh } = useApp();
   useEffect(() => {
     let live = true;
     setLoading(true);
-    request<TaskDocument[]>("/documents")
+    request<TaskDocument[]>("/documents?latest=approved")
       .then((d) => {
         if (live) {
           setDocs(d);
@@ -114,9 +86,7 @@ export function DocumentsView({
   }, [lastRefresh]);
   const visible = docs.filter(
     (d) =>
-      (!kind || d.kind === kind) &&
-      (!filter || (filter === "current" ? d.is_current : !!d.approved_at)) &&
-      `${d.task_id} ${tasks.find((t) => t.id === Number(d.task_id))?.title || ""} ${d.title} ${d.version}`
+      `${d.task_id} ${tasks.find((t) => t.id === Number(d.task_id))?.title || ""} ${d.title}`
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
@@ -124,44 +94,19 @@ export function DocumentsView({
     <section className="tracker-section">
       <div className="section-tools">
         <input
-          placeholder="Задача, название, версия"
+          placeholder="Задача или название документа"
           aria-label="Поиск документов"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
-          aria-label="Вид документа"
-          value={kind}
-          onChange={(e) => setKind(e.target.value)}
-        >
-          <option value="">Все виды</option>
-          {Object.entries(DOCUMENT_KINDS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Состояние документа"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        >
-          <option value="">Все версии</option>
-          <option value="current">Актуальные</option>
-          <option value="approved">Согласованные</option>
-        </select>
       </div>
-      <p className="muted">
-        Актуальная версия и согласованная версия могут отличаться. Новая
-        загрузка не наследует согласование.
-      </p>
       {error && (
         <p role="alert" className="tracker-error">
           {error}
         </p>
       )}
-      {loading ? (
-        <p>Загружаю документы…</p>
+      {loading && !docs.length ? (
+        <p>Загрузка…</p>
       ) : visible.length ? (
         visible.map((d) => (
           <article className="document-row" key={d.id}>
@@ -170,30 +115,17 @@ export function DocumentsView({
             </button>
             <div>
               <b>
-                {DOCUMENT_KINDS[d.kind]} · {d.title} · v{d.version}
+                {d.title}
               </b>
-              <small>
-                Получен {displayTime(d.received_at)} ·{" "}
-                {d.document_date
-                  ? `Дата документа: ${d.document_date.slice(0, 10)}`
-                  : "Дата документа неизвестна"}
-              </small>
+              <small>{tasks.find(t => t.id === Number(d.task_id))?.title}</small>
             </div>
-            <span>
-              {d.is_current ? "Актуальная" : "Актуальность не подтверждена"}
-              <small>
-                {d.approved_at
-                  ? `Согласована ${displayTime(d.approved_at)}`
-                  : "Согласование не подтверждено"}
-              </small>
-            </span>
+            <span>Согласован {new Date(d.approved_at!).toLocaleDateString("ru-RU", {timeZone:"Europe/Moscow"})}</span>
             <DownloadLink doc={d} />
           </article>
         ))
       ) : (
         <p className="empty-state">
-          Документов по этим условиям нет. Версии можно добавить в карточке
-          задачи или через API агента.
+          Документов нет.
         </p>
       )}
     </section>
@@ -267,10 +199,6 @@ export function AttentionView({
           Показать отложенные
         </label>
       </div>
-      <p className="muted">
-        Только подтверждённые сроки, активные задачи и заданные действия.
-        Возраст очереди сам по себе не создаёт сигнал.
-      </p>
       {settingsOpen && (
         <div className="threshold-settings">
           {["в аналитике", "оценка", "разработка", "ревью"].map((s) => (
@@ -313,7 +241,7 @@ export function AttentionView({
           {error}
         </p>
       )}
-      {loading ? (
+      {loading && !items.length ? (
         <p>Проверяю задачи…</p>
       ) : visible.length ? (
         visible.map((i) => (
@@ -372,10 +300,7 @@ export function AttentionView({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Отложить этот сигнал</DialogTitle>
-            <DialogDescription>
-              Срок задачи останется прежним. Новые причины будут показаны
-              отдельно.
-            </DialogDescription>
+            <DialogDescription className="sr-only">Настройка напоминания</DialogDescription>
           </DialogHeader>
           <label>
             До даты и времени
@@ -483,10 +408,7 @@ export function TaskHistory({
       <DialogContent className="history-modal">
         <DialogHeader>
           <DialogTitle>История изменений · #{taskId}</DialogTitle>
-          <DialogDescription>
-            Время указано по Москве. Участник внешнего события — по сведениям
-            источника.
-          </DialogDescription>
+          <DialogDescription className="sr-only">События задачи</DialogDescription>
         </DialogHeader>
         <div className="section-tools">
           {[
@@ -567,44 +489,23 @@ export function TaskHistory({
   );
 }
 
-export function TaskDetails({ taskId }: { taskId: number }) {
+export const TaskDetails = memo(function TaskDetails({ taskId }: { taskId: number }) {
   const [historyOpen, setHistoryOpen] = useState(false),
-    [docs, setDocs] = useState<TaskDocument[]>([]),
     [jira, setJira] = useState<JiraSnapshot | null>(null),
     [metrics, setMetrics] = useState<StageMetrics | null>(null),
     [error, setError] = useState("");
   const [jiraKey, setJiraKey] = useState(""),
     [jiraUrl, setJiraUrl] = useState(""),
-    [busy, setBusy] = useState(false),
-    [upload, setUpload] = useState(false);
-  const [kind, setKind] = useState("az"),
-    [title, setTitle] = useState(""),
-    [version, setVersion] = useState(""),
-    [docDate, setDocDate] = useState(""),
-    [link, setLink] = useState(""),
-    [file, setFile] = useState<File | null>(null);
-  const [mark, setMark] = useState<TaskDocument | null>(null),
-    [evidence, setEvidence] = useState(""),
-    [approvedAt, setApprovedAt] = useState("");
-  const uploadKey = useRefKey();
-  const approvalKey = useRefKey();
-  const currentRequests = useRef<Record<string, { id: string; at: string }>>(
-    {},
-  );
+    [busy, setBusy] = useState(false);
+  const [stagesOpen, setStagesOpen] = useState(false);
   const [pauseReason, setPauseReason] = useState("");
   const stateKey = useRefKey();
   const load = useCallback(async () => {
     try {
-      const [t, d, m] = await Promise.all([
-        request<{ jira: JiraSnapshot | null }>(`/tasks/${taskId}`),
-        request<TaskDocument[]>(`/tasks/${taskId}/documents`),
-        request<StageMetrics>(`/tasks/${taskId}/stages`),
-      ]);
+      const t = await request<{ jira: JiraSnapshot | null }>(`/tasks/${taskId}`);
       setJira(t.jira);
       setJiraKey(t.jira?.issue_key || "");
       setJiraUrl(t.jira?.url || "");
-      setDocs(d);
-      setMetrics(m);
       setError("");
     } catch (e) {
       setError(errorText(e));
@@ -613,55 +514,22 @@ export function TaskDetails({ taskId }: { taskId: number }) {
   useEffect(() => {
     void load();
   }, [load]);
+  const loadStages = useCallback(async () => {
+    try { setMetrics(await request<StageMetrics>(`/tasks/${taskId}/stages`)); }
+    catch (e) { setError(errorText(e)); }
+  }, [taskId]);
+  useEffect(() => { if (stagesOpen) void loadStages(); }, [stagesOpen, loadStages]);
   const action = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     try {
       await fn();
       await load();
+      if (stagesOpen) await loadStages();
     } catch (e) {
       setError(errorText(e));
     } finally {
       setBusy(false);
     }
-  };
-  const register = async () => {
-    let file_base64: string | undefined;
-    if (file) {
-      if (file.size > 10485760)
-        throw new Error("Максимальный размер файла — 10 МБ");
-      file_base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result).split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-    await request(`/tasks/${taskId}/documents`, {
-      method: "POST",
-      body: JSON.stringify({
-        event: {
-          external_id: uploadKey.key,
-          type: "document.received",
-          summary: `Добавлен ${DOCUMENT_KINDS[kind as keyof typeof DOCUMENT_KINDS]} ${title} v${version}`,
-          occurred_at: uploadKey.at,
-        },
-        document: {
-          kind,
-          title,
-          version,
-          document_date: docDate || null,
-          source_url: link || null,
-          file_name: file?.name,
-          file_base64,
-        },
-      }),
-    });
-    setUpload(false);
-    uploadKey.reset();
-    setFile(null);
-    setTitle("");
-    setVersion("");
-    setLink("");
   };
   return (
     <div className="task-details">
@@ -714,10 +582,6 @@ export function TaskDetails({ taskId }: { taskId: number }) {
             {jira.error && <span>{jira.error}</span>}
           </div>
         )}
-        <p className="muted">
-          Данные и историю передаёт агент. Локальные статус и ответственный
-          сохраняются отдельно.
-        </p>
         <div className="form-grid">
           <label>
             Ключ Jira
@@ -755,7 +619,7 @@ export function TaskDetails({ taskId }: { taskId: number }) {
           Обновить полученные данные
         </button>
       </details>
-      <details>
+      <details onToggle={e => setStagesOpen(e.currentTarget.open)}>
         <summary>Время в этапах{metrics?.paused ? " · на паузе" : ""}</summary>
         {metrics ? (
           <>
@@ -776,13 +640,6 @@ export function TaskDetails({ taskId }: { taskId: number }) {
                 Общий возраст<b>{displayDays(metrics.ageMilliseconds)}</b>
               </span>
             </div>
-            <p className="muted">
-              Календарное время по статусам SimpleTracker, не трудозатраты.
-              Паузы исключены из длительностей этапов.{" "}
-              {metrics.complete
-                ? "История известна с создания задачи."
-                : `История неполная. Известно с ${displayTime(metrics.observedSince)}; неизвестные интервалы в суммы не включены.`}
-            </p>
             <p>
               Первый известный вход в работу: {displayTime(metrics.firstActive)}
               <br />
@@ -837,219 +694,11 @@ export function TaskDetails({ taskId }: { taskId: number }) {
           <p>Нет данных для расчёта.</p>
         )}
       </details>
-      <details open>
-        <summary>Документы · {docs.length}</summary>
-        {docs.map((d) => (
-          <article className="document-compact" key={d.id}>
-            <b>
-              {DOCUMENT_KINDS[d.kind]} · {d.title} · v{d.version}
-            </b>
-            <small>
-              {d.is_current ? "Актуальная" : "Актуальность не подтверждена"} ·{" "}
-              {d.approved_at
-                ? `Согласована ${displayTime(d.approved_at)}`
-                : "Согласование не подтверждено"}
-            </small>
-            <div className="section-tools">
-              <DownloadLink doc={d} />
-              {!d.is_current && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void action(async () => {
-                      const pending = (currentRequests.current[d.id] ??= {
-                        id: crypto.randomUUID(),
-                        at: new Date().toISOString(),
-                      });
-                      await request(
-                        `/tasks/${taskId}/documents/${d.id}/state`,
-                        {
-                          method: "POST",
-                          body: JSON.stringify({
-                            event: {
-                              external_id: pending.id,
-                              type: "document.current",
-                              summary: `Рабочая версия: ${d.title} v${d.version}`,
-                              occurred_at: pending.at,
-                            },
-                            state: { is_current: true },
-                          }),
-                        },
-                      );
-                      delete currentRequests.current[d.id];
-                    })
-                  }
-                >
-                  Сделать актуальной
-                </button>
-              )}
-              {!d.approved_at && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMark(d);
-                    approvalKey.reset();
-                    setEvidence("");
-                    setApprovedAt("");
-                  }}
-                >
-                  Зафиксировать согласование
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
-        {!docs.length && (
-          <p className="muted">
-            Подтверждённых версий пока нет. Прежний текст истории остаётся в
-            поле выше.
-          </p>
-        )}
-        <button type="button" onClick={() => setUpload((v) => !v)}>
-          Добавить версию
-        </button>
-        {upload && (
-          <div className="document-upload form-grid">
-            <label>
-              Вид
-              <select
-                value={kind}
-                onChange={(e) => {
-                  setKind(e.target.value);
-                  uploadKey.reset();
-                }}
-              >
-                {Object.entries(DOCUMENT_KINDS).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Версия
-              <input
-                value={version}
-                onChange={(e) => {
-                  setVersion(e.target.value);
-                  uploadKey.reset();
-                }}
-              />
-            </label>
-            <label>
-              Название
-              <input
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  uploadKey.reset();
-                }}
-              />
-            </label>
-            <label>
-              Дата документа
-              <input
-                type="date"
-                value={docDate}
-                onChange={(e) => {
-                  setDocDate(e.target.value);
-                  uploadKey.reset();
-                }}
-              />
-            </label>
-            <label>
-              Ссылка на источник
-              <input
-                type="url"
-                value={link}
-                onChange={(e) => {
-                  setLink(e.target.value);
-                  uploadKey.reset();
-                }}
-              />
-            </label>
-            <label>
-              Файл · до 10 МБ
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg"
-                onChange={(e) => {
-                  setFile(e.target.files?.[0] || null);
-                  uploadKey.reset();
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              disabled={busy || !title || !version || (!file && !link)}
-              onClick={() => void action(register)}
-            >
-              {busy ? "Сохраняю…" : "Сохранить версию"}
-            </button>
-          </div>
-        )}
-        {mark && (
-          <div className="document-upload">
-            <b>
-              Согласование {mark.title} v{mark.version}
-            </b>
-            <label>
-              Когда согласовано
-              <input
-                type="datetime-local"
-                value={approvedAt}
-                onChange={(e) => {
-                  setApprovedAt(e.target.value);
-                  approvalKey.reset();
-                }}
-              />
-            </label>
-            <label>
-              Основание: ссылка или описание подтверждения
-              <textarea
-                value={evidence}
-                onChange={(e) => {
-                  setEvidence(e.target.value);
-                  approvalKey.reset();
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              disabled={busy || !evidence || !approvedAt}
-              onClick={() =>
-                void action(async () => {
-                  await request(`/tasks/${taskId}/documents/${mark.id}/state`, {
-                    method: "POST",
-                    body: JSON.stringify({
-                      event: {
-                        external_id: approvalKey.key,
-                        type: "document.approved",
-                        summary: `Согласована ${mark.title} v${mark.version}`,
-                        occurred_at: new Date(approvedAt).toISOString(),
-                      },
-                      state: {
-                        approved_at: new Date(approvedAt).toISOString(),
-                        approval_evidence: evidence,
-                      },
-                    }),
-                  });
-                  setMark(null);
-                })
-              }
-            >
-              Подтвердить согласование
-            </button>
-            <button type="button" onClick={() => setMark(null)}>
-              Отмена
-            </button>
-          </div>
-        )}
-      </details>
+      <ApprovedDocument taskId={taskId} />
     </div>
   );
-}
+});
+
 function useRefKey() {
   const [key, setKey] = useState(() => crypto.randomUUID());
   const time = useRef<string | null>(null);

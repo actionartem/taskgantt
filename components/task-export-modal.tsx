@@ -180,9 +180,7 @@ export function TaskExportModal({ open, onOpenChange }: TaskExportModalProps) {
             <FileSpreadsheet className="h-5 w-5 text-primary" />
             Выгрузка задач в Excel
           </DialogTitle>
-          <DialogDescription>
-            Выгрузка использует выбранные здесь статусы и поля. Фильтры основного экрана к ней не применяются.
-          </DialogDescription>
+          <DialogDescription className="sr-only">Параметры выгрузки</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(360px,0.95fr)_minmax(420px,1.05fr)]">

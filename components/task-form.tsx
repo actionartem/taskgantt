@@ -16,6 +16,7 @@ import {
 } from "@/lib/types";
 import { generateTaskId, validateTaskId } from "@/lib/task-utils";
 import { TaskDetails } from "./tracker-views";
+import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 const empty = (): Task => ({
   id: generateTaskId(),
   title: "",
@@ -60,6 +61,7 @@ export function TaskForm({
     [saving, setSaving] = useState(false),
     [error, setError] = useState(""),
     [dirty, setDirty] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
   const initial = useRef<Task>(draft),
     openedId = useRef<string | null>(null);
   useEffect(() => {
@@ -71,6 +73,7 @@ export function TaskForm({
     setDraft(value);
     setDirty(false);
     setError("");
+    setDiscardOpen(false);
     openedId.current = key;
   }, [open, task]);
   const set = <K extends keyof Task>(key: K, value: Task[K]) => {
@@ -79,11 +82,7 @@ export function TaskForm({
   };
   const close = () => {
     if (saving) return;
-    if (
-      dirty &&
-      !window.confirm("Закрыть карточку и потерять несохранённые изменения?")
-    )
-      return;
+    if (dirty) { setDiscardOpen(true); return; }
     openedId.current = null;
     onClose();
   };
@@ -136,7 +135,7 @@ export function TaskForm({
       <DialogContent
         className="task-form-modal"
         showCloseButton={!saving}
-        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => { if (saving) e.preventDefault(); }}
         onEscapeKeyDown={(e) => {
           if (saving) e.preventDefault();
         }}
@@ -145,11 +144,7 @@ export function TaskForm({
           <DialogTitle>
             {task ? `Задача #${task.id}` : "Новая задача"}
           </DialogTitle>
-          <DialogDescription>
-            {dirty
-              ? "Есть несохранённые изменения"
-              : "Поля SimpleTracker. Внешние источники показаны отдельно."}
-          </DialogDescription>
+          <DialogDescription className="sr-only">Карточка задачи</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="task-editor">
           <fieldset disabled={saving}>
@@ -406,6 +401,16 @@ export function TaskForm({
           </div>
         </form>
         {task && <TaskDetails key={task.id} taskId={task.id} />}
+        <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+          <AlertDialogContent>
+            <AlertDialogTitle>Закрыть без сохранения?</AlertDialogTitle>
+            <AlertDialogDescription>Изменения карточки будут потеряны.</AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Продолжить редактирование</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { openedId.current = null; onClose(); }}>Закрыть без сохранения</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );

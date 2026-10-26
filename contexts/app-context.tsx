@@ -58,6 +58,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [refreshError, setRefreshError] = useState<string | null>(null),
     [loading, setLoading] = useState(false);
   const sequence = useRef(0);
+  const lastAutoRefresh = useRef(0);
   const refreshFromApi = useCallback(async () => {
     const user = owner();
     if (!user) return;
@@ -70,15 +71,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         fetchTasks(),
       ]);
       if (seq !== sequence.current || user !== owner()) return;
-      setTasks(data);
-      setSettings({
+      setTasks(prev => JSON.stringify(prev) === JSON.stringify(data) ? prev : data);
+      const nextSettings = {
         executors: users.map((u) => ({
           id: Number(u.id),
           name: u.name,
           role: u.role_text,
         })),
         tags: tags.map((t) => t.title),
-      });
+      };
+      setSettings(prev => JSON.stringify(prev) === JSON.stringify(nextSettings) ? prev : nextSettings);
       setLastRefresh(new Date().toISOString());
       setRefreshError(null);
     } catch (e) {
@@ -95,8 +97,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     storage.saveTheme("light");
     document.documentElement.classList.remove("dark");
     const refresh = () => {
-      if (document.visibilityState === "visible" && owner())
+      if (document.visibilityState === "visible" && owner() && Date.now() - lastAutoRefresh.current > 10000) {
+        lastAutoRefresh.current = Date.now();
         void refreshFromApi().catch(() => {});
+      }
     };
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);

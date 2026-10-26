@@ -949,7 +949,15 @@ button[aria-pressed="true"]:not(.status-chip) {
 .task-form-modal {
   width: min(740px, calc(100vw - 32px)) !important;
   max-width: 740px !important;
+  height: 90dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  scrollbar-gutter: stable;
+  animation: none !important;
+  transition: none !important;
 }
+.approved-document-content { min-height: 72px; }
 .history-modal {
   width: min(680px, calc(100vw - 32px)) !important;
   max-width: 680px !important;
@@ -1515,7 +1523,9 @@ button[aria-pressed="true"]:not(.status-chip) {
 .tracker-board { flex: 1; min-height: 0; position: relative; display: flex; }
 .tracker-board .tracker-grid { min-height: 0; }
 .list-divider { position: absolute; top: 0; bottom: 0; width: 8px; z-index: 12; cursor: col-resize; touch-action: none; }
-.list-divider:hover, .list-divider:focus-visible, .list-divider:active { background: #ff5a2b55; outline: 1px solid var(--st-accent); }
+.list-divider::after { content: ""; position: absolute; inset: 0 3px; background: transparent; transition: background-color 100ms; }
+.list-divider:hover::after, .list-divider:active::after { background: #847d7060; }
+.list-divider:focus-visible { outline: 1px solid #847d7070; outline-offset: -2px; }
 .status-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 20px; border-bottom: 1px solid var(--st-line); flex-shrink: 0; }
 .tracker-frame .status-filters button { min-height: 28px; font-size: 12px; padding: 4px 9px; border-color: var(--st-line); }
 .status-filters button i { width: 7px; height: 7px; background: var(--status); border-radius: 50%; }
@@ -1536,6 +1546,7 @@ button[aria-pressed="true"]:not(.status-chip) {
 .hours-view { padding: 24px 28px; }
 .hours-toolbar, .hours-chart-heading, .hours-table-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
 .hours-toolbar h2 { font-size: 25px; margin: 0 0 5px; }
+.hours-loading { display: block; height: 16px; color: var(--st-muted); font-size: 11px; }
 .hours-toolbar p, .hours-progress p { font-size: 12px; color: var(--st-muted); }
 .hours-toolbar label { display: flex; flex-shrink: 0; align-items: center; gap: 10px; font-size: 13px; }
 .hours-toolbar select { border: 1px solid var(--st-ink); padding: 7px 10px; border-radius: 5px; background: var(--st-surface); font-family: var(--font-jbm); font-weight: 600; }
