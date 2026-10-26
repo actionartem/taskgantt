@@ -1,467 +1,438 @@
-"use client"
-
-import type React from "react"
-import { useEffect, useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+"use client";
+import { useEffect, useRef, useState } from "react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-
-import type { Task, TaskPriority, TaskStatus } from "@/lib/types"
-import { useApp } from "@/contexts/app-context"
-import { generateTaskId, validateTaskId } from "@/lib/task-utils"
-
-interface TaskFormProps {
-  task?: Task
-  open: boolean
-  onClose: () => void
-}
-
-const STATUSES: TaskStatus[] = [
-  "не в работе",
-  "в аналитике",
-  "на согласовании",
-  "оценка",
-  "готова к разработке",
-  "разработка",
-  "ревью",
-  "завершена",
-]
-
-const PRIORITIES: TaskPriority[] = ["низкий", "средний", "высокий"]
-
-type FormState = {
-  id: number | ""
-  title: string
-  link: string
-  description: string
-  emailThread: string
-  documentHistory: string
-  status: TaskStatus
-  startDate: string
-  endDate: string
-  // ВАЖНО: работаем с id+name, чтобы API получал id, а UI — имя
-  assigneeId: number | null
-  assigneeName: string | null
-  priority: TaskPriority
-  approvedHours: string
-  spentHours: string
-  tags: string[]
-  statusLog: Task["statusLog"]
-}
-
-function parseHoursInput(value: string): number | null {
-  const trimmed = value.trim().replace(",", ".")
-  if (!trimmed) return null
-  const n = Number(trimmed)
-  return Number.isFinite(n) && n >= 0 ? n : Number.NaN
-}
-
-export function TaskForm({ task, open, onClose }: TaskFormProps) {
-  const { addTask, updateTask, settings } = useApp()
-
-  const executors = useMemo(() => settings?.executors ?? [], [settings?.executors])
-  const allTags = useMemo(() => settings?.tags ?? [], [settings?.tags])
-
-  const [formData, setFormData] = useState<FormState>({
-    id: generateTaskId(),
-    title: "",
-    link: "",
-    description: "",
-    emailThread: "",
-    documentHistory: "",
-    status: "не в работе",
-    startDate: "",
-    endDate: "",
-    assigneeId: null,
-    assigneeName: null,
-    priority: "средний",
-    approvedHours: "",
-    spentHours: "",
-    tags: [],
-    statusLog: [],
-  })
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
-  // Подстановка при открытии
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useApp } from "@/contexts/app-context";
+import {
+  STATUS_COLORS,
+  type Task,
+  type TaskStatus,
+  type TaskPriority,
+} from "@/lib/types";
+import { generateTaskId, validateTaskId } from "@/lib/task-utils";
+import { TaskDetails } from "./tracker-views";
+const empty = (): Task => ({
+  id: generateTaskId(),
+  title: "",
+  description: "",
+  emailThread: "",
+  documentHistory: "",
+  status: "не в работе",
+  priority: "средний",
+  tags: [],
+  statusLog: [],
+  assigneeId: null,
+  startDate: "",
+  endDate: "",
+  approvedHours: null,
+  spentHours: null,
+  link: "",
+  deadlineConfirmed: false,
+  nextActionAt: null,
+  nextActionText: "",
+  replyDueAt: null,
+  waitingFor: "",
+});
+const normalize = (v: unknown) =>
+  v == null || v === "" ? null : Array.isArray(v) ? [...v].sort() : v;
+const localDateTime = (value?: string | null) => {
+  if (!value) return "";
+  const d = new Date(value);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+};
+export function TaskForm({
+  task,
+  open,
+  onClose,
+}: {
+  task?: Task;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { settings, addTask, updateTask, deleteTask } = useApp();
+  const [draft, setDraft] = useState<Task>(empty),
+    [saving, setSaving] = useState(false),
+    [error, setError] = useState(""),
+    [dirty, setDirty] = useState(false);
+  const initial = useRef<Task>(draft),
+    openedId = useRef<string | null>(null);
   useEffect(() => {
-    if (task) {
-      setFormData({
-        id: task.id,
-        title: task.title ?? "",
-        link: (task as any).link ?? "",
-        description: task.description ?? "",
-        emailThread: task.emailThread ?? "",
-        documentHistory: task.documentHistory ?? "",
-        status: task.status,
-        startDate: task.startDate ?? "",
-        endDate: task.endDate ?? "",
-        assigneeId:
-          typeof task.assigneeId === "number"
-            ? task.assigneeId
-            : null,
-        assigneeName: task.assigneeName ?? null,
-        priority: task.priority ?? "средний",
-        approvedHours: task.approvedHours == null ? "" : String(task.approvedHours),
-        spentHours: task.spentHours == null ? "" : String(task.spentHours),
-        tags: Array.isArray(task.tags) ? task.tags : [],
-        statusLog: Array.isArray(task.statusLog) ? task.statusLog : [],
-      })
-    } else {
-      setFormData({
-        id: generateTaskId(),
-        title: "",
-        link: "",
-        description: "",
-        emailThread: "",
-        documentHistory: "",
-        status: "не в работе",
-        startDate: "",
-        endDate: "",
-        assigneeId: null,
-        assigneeName: null,
-        priority: "средний",
-        approvedHours: "",
-        spentHours: "",
-        tags: [],
-        statusLog: [],
-      })
+    if (!open) return;
+    const key = task ? String(task.id) : "new";
+    if (openedId.current === key) return;
+    const value = task ? { ...empty(), ...task } : empty();
+    initial.current = value;
+    setDraft(value);
+    setDirty(false);
+    setError("");
+    openedId.current = key;
+  }, [open, task]);
+  const set = <K extends keyof Task>(key: K, value: Task[K]) => {
+    setDraft((p) => ({ ...p, [key]: value }));
+    setDirty(true);
+  };
+  const close = () => {
+    if (saving) return;
+    if (
+      dirty &&
+      !window.confirm("Закрыть карточку и потерять несохранённые изменения?")
+    )
+      return;
+    openedId.current = null;
+    onClose();
+  };
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    if (!validateTaskId(draft.id)) {
+      setError("ID должен быть 5-значным числом");
+      return;
     }
-    setErrors({})
-  }, [task, open])
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const nextErrors: Record<string, string> = {}
-
-    if (!formData.title.trim()) nextErrors.title = "Название обязательно"
-    if (formData.id === "" || !validateTaskId(Number(formData.id))) {
-      nextErrors.id = "ID должен быть 5-значным числом"
+    if (draft.startDate && draft.endDate && draft.startDate > draft.endDate) {
+      setError("Начало не может быть позже окончания");
+      return;
     }
-    const approvedHours = parseHoursInput(formData.approvedHours)
-    const spentHours = parseHoursInput(formData.spentHours)
-    if (Number.isNaN(approvedHours)) {
-      nextErrors.approvedHours = "Укажите неотрицательное число"
+    setSaving(true);
+    setError("");
+    try {
+      if (task) {
+        const changes: Partial<Task> = {};
+        for (const key of Object.keys(draft) as Array<keyof Task>) {
+          if (["id", "statusLog", "assigneeName"].includes(key)) continue;
+          if (
+            JSON.stringify(normalize(draft[key])) !==
+            JSON.stringify(normalize(initial.current[key]))
+          )
+            (changes as Record<string, unknown>)[key] = draft[key];
+        }
+        await updateTask(task.id, changes);
+      } else await addTask(draft);
+      setDirty(false);
+      openedId.current = null;
+      onClose();
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Не удалось сохранить. Черновик остался в форме.",
+      );
+    } finally {
+      setSaving(false);
     }
-    if (Number.isNaN(spentHours)) {
-      nextErrors.spentHours = "Укажите неотрицательное число"
-    }
-
-    if (Object.keys(nextErrors).length) {
-      setErrors(nextErrors)
-      return
-    }
-
-    // Нормализуем объект для контекста
-    const normalized: Partial<Task> = {
-      id: Number(formData.id),
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      emailThread: formData.emailThread.trim() || null,
-      documentHistory: formData.documentHistory.trim() || null,
-      status: formData.status,
-      startDate: formData.startDate || "",
-      endDate: formData.endDate || "",
-      // ключевой момент: кладём и id, и name
-      assigneeId: formData.assigneeId, // null — ОК, 0 — НЕЛЬЗЯ
-      assigneeName: formData.assigneeName ?? null,
-      priority: formData.priority,
-      approvedHours,
-      spentHours,
-      tags: Array.isArray(formData.tags) ? formData.tags : [],
-      // link у нас кастомное поле в UI
-      ...(formData.link ? { link: formData.link } : { link: "" }),
-      statusLog: formData.statusLog,
-    }
-
-    if (task) {
-      // патчим только изменившиеся поля не обязательно — апи-проекция
-      updateTask(task.id, normalized)
-    } else {
-      // addTask принимает Task — но наш AppContext поддерживает optimistic и конвертирует
-      addTask(normalized as Task)
-    }
-
-    onClose()
-  }
-
-  const handleTagToggle = (tag: string) => {
-    setFormData((p) => {
-      const set = new Set(p.tags)
-      if (set.has(tag)) {
-        set.delete(tag)
-      } else {
-        set.add(tag)
-      }
-      return { ...p, tags: Array.from(set) }
-    })
-  }
-
-  // Значение селекта исполнителя (строка id или "none")
-  const assigneeSelectValue =
-    formData.assigneeId != null ? String(formData.assigneeId) : "none"
-
-  const onAssigneeChange = (value: string) => {
-    if (value === "none") {
-      setFormData((p) => ({ ...p, assigneeId: null, assigneeName: null }))
-      return
-    }
-    const found = executors.find((e) => String(e.id) === value)
-    setFormData((p) => ({
-      ...p,
-      assigneeId: found ? Number(found.id) : null,
-      assigneeName: found?.name ?? null,
-    }))
-  }
-
+  };
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) close();
+      }}
+    >
+      <DialogContent
+        className="task-form-modal"
+        showCloseButton={!saving}
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => {
+          if (saving) e.preventDefault();
+        }}
+      >
         <DialogHeader>
-          <DialogTitle>{task ? "Редактировать задачу" : "Создать задачу"}</DialogTitle>
+          <DialogTitle>
+            {task ? `Задача #${task.id}` : "Новая задача"}
+          </DialogTitle>
+          <DialogDescription>
+            {dirty
+              ? "Есть несохранённые изменения"
+              : "Поля SimpleTracker. Внешние источники показаны отдельно."}
+          </DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">
-                Название <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-                placeholder="Название задачи"
-              />
-              {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="id">
-                ID <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="id"
-                type="number"
-                value={formData.id}
-                onChange={(e) => {
-                  const raw = e.target.value
-                  if (raw === "") return setFormData((p) => ({ ...p, id: "" }))
-                  const n = Number(raw)
-                  if (Number.isFinite(n)) setFormData((p) => ({ ...p, id: n }))
-                }}
-                placeholder="12345"
-                disabled={!!task}
-              />
-              {errors.id && <p className="text-xs text-destructive">{errors.id}</p>}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="link">Ссылка на задачу</Label>
-            <Input
-              id="link"
-              type="url"
-              value={formData.link}
-              onChange={(e) => setFormData((p) => ({ ...p, link: e.target.value }))}
-              placeholder="https://..."
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="emailThread">Тред в почте</Label>
-            <Input
-              id="emailThread"
-              value={formData.emailThread}
-              onChange={(e) => setFormData((p) => ({ ...p, emailThread: e.target.value }))}
-              placeholder="Ссылка или идентификатор треда в почте"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Описание</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-              placeholder="Описание задачи"
-              rows={3}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="documentHistory">История</Label>
-            <Textarea
-              id="documentHistory"
-              value={formData.documentHistory}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, documentHistory: e.target.value }))
-              }
-              placeholder={
-                "06.08.2026 — документ получен нами\n07.08.2026 — документ отправлен нами"
-              }
-              rows={4}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="status">Статус</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => setFormData((p) => ({ ...p, status: value as TaskStatus }))}
-              >
-                <SelectTrigger id="status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
+        <form onSubmit={submit} className="task-editor">
+          <fieldset disabled={saving}>
+            <div className="form-grid">
+              <label>
+                ID
+                <input
+                  type="number"
+                  value={draft.id}
+                  disabled={!!task}
+                  min="10000"
+                  max="99999"
+                  required
+                  onChange={(e) => set("id", Number(e.target.value))}
+                />
+              </label>
+              <label>
+                Приоритет
+                <select
+                  value={draft.priority}
+                  onChange={(e) =>
+                    set("priority", e.target.value as TaskPriority)
+                  }
+                >
+                  {["низкий", "средний", "высокий"].map((s) => (
+                    <option key={s}>{s}</option>
                   ))}
-                </SelectContent>
-              </Select>
+                </select>
+              </label>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="priority">Приоритет</Label>
-              <Select
-                value={formData.priority}
-                onValueChange={(value) => setFormData((p) => ({ ...p, priority: value as TaskPriority }))}
-              >
-                <SelectTrigger id="priority">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITIES.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {p}
-                    </SelectItem>
+            <label>
+              Название
+              <input
+                value={draft.title}
+                required
+                maxLength={1000}
+                onChange={(e) => set("title", e.target.value)}
+              />
+            </label>
+            <div className="form-grid">
+              <label>
+                Статус SimpleTracker
+                <select
+                  value={draft.status}
+                  onChange={(e) => set("status", e.target.value as TaskStatus)}
+                >
+                  {Object.keys(STATUS_COLORS).map((s) => (
+                    <option key={s}>{s}</option>
                   ))}
-                </SelectContent>
-              </Select>
+                </select>
+              </label>
+              <label>
+                Ответственный SimpleTracker
+                <select
+                  value={draft.assigneeId ?? ""}
+                  onChange={(e) =>
+                    set(
+                      "assigneeId",
+                      e.target.value ? Number(e.target.value) : null,
+                    )
+                  }
+                >
+                  <option value="">Не назначен</option>
+                  {settings.executors.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Дата начала работ</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
+            <div className="form-grid">
+              <label>
+                Начало
+                <input
+                  type="date"
+                  value={draft.startDate || ""}
+                  onChange={(e) => set("startDate", e.target.value || null)}
+                />
+              </label>
+              <label>
+                Окончание
+                <input
+                  type="date"
+                  value={draft.endDate || ""}
+                  onChange={(e) => set("endDate", e.target.value || null)}
+                />
+              </label>
+            </div>
+            <label className="check-label">
+              <input
+                type="checkbox"
+                checked={!!draft.deadlineConfirmed}
+                onChange={(e) => set("deadlineConfirmed", e.target.checked)}
+              />{" "}
+              Это подтверждённый обещанный срок
+            </label>
+            <div className="form-grid">
+              <label>
+                Согласовано, ч
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  max="1000000"
+                  value={draft.approvedHours ?? ""}
+                  placeholder="Неизвестно"
+                  onChange={(e) =>
+                    set(
+                      "approvedHours",
+                      e.target.value === "" ? null : Number(e.target.value),
+                    )
+                  }
+                />
+              </label>
+              <label>
+                Потрачено, ч
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  max="1000000"
+                  value={draft.spentHours ?? ""}
+                  placeholder="Неизвестно"
+                  onChange={(e) =>
+                    set(
+                      "spentHours",
+                      e.target.value === "" ? null : Number(e.target.value),
+                    )
+                  }
+                />
+              </label>
+            </div>
+            <label>
+              Описание
+              <textarea
+                rows={3}
+                value={draft.description || ""}
+                onChange={(e) => set("description", e.target.value)}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="endDate">Дата окончания работ</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData((p) => ({ ...p, endDate: e.target.value }))}
+            </label>
+            <label>
+              Ссылка на задачу
+              <input
+                type="url"
+                value={draft.link || ""}
+                onChange={(e) => set("link", e.target.value)}
               />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="approvedHours">Часов согласовано</Label>
-              <Input
-                id="approvedHours"
-                type="number"
-                min="0"
-                step="0.25"
-                inputMode="decimal"
-                value={formData.approvedHours}
-                onChange={(e) => setFormData((p) => ({ ...p, approvedHours: e.target.value }))}
-                placeholder="0"
+            </label>
+            <label>
+              Почтовая переписка
+              <textarea
+                rows={2}
+                value={draft.emailThread || ""}
+                onChange={(e) => set("emailThread", e.target.value)}
               />
-              {errors.approvedHours && (
-                <p className="text-xs text-destructive">{errors.approvedHours}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="spentHours">Часов затрачено</Label>
-              <Input
-                id="spentHours"
-                type="number"
-                min="0"
-                step="0.25"
-                inputMode="decimal"
-                value={formData.spentHours}
-                onChange={(e) => setFormData((p) => ({ ...p, spentHours: e.target.value }))}
-                placeholder="0"
+            </label>
+            <label>
+              Прежняя текстовая история документов
+              <textarea
+                rows={3}
+                value={draft.documentHistory || ""}
+                onChange={(e) => set("documentHistory", e.target.value)}
               />
-              {errors.spentHours && (
-                <p className="text-xs text-destructive">{errors.spentHours}</p>
-              )}
+            </label>
+            <div className="form-grid">
+              <label>
+                Следующее действие
+                <input
+                  value={draft.nextActionText || ""}
+                  onChange={(e) => set("nextActionText", e.target.value)}
+                />
+              </label>
+              <label>
+                Срок действия <small>(часовой пояс устройства)</small>
+                <input
+                  type="datetime-local"
+                  value={localDateTime(draft.nextActionAt)}
+                  onChange={(e) =>
+                    set(
+                      "nextActionAt",
+                      e.target.value
+                        ? new Date(e.target.value).toISOString()
+                        : null,
+                    )
+                  }
+                />
+              </label>
+              <label>
+                Чей ответ ждём
+                <input
+                  value={draft.waitingFor || ""}
+                  onChange={(e) => set("waitingFor", e.target.value)}
+                />
+              </label>
+              <label>
+                Срок ответа <small>(часовой пояс устройства)</small>
+                <input
+                  type="datetime-local"
+                  value={localDateTime(draft.replyDueAt)}
+                  onChange={(e) =>
+                    set(
+                      "replyDueAt",
+                      e.target.value
+                        ? new Date(e.target.value).toISOString()
+                        : null,
+                    )
+                  }
+                />
+              </label>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="assignee">Исполнитель</Label>
-            <Select value={assigneeSelectValue} onValueChange={onAssigneeChange}>
-              <SelectTrigger id="assignee">
-                <SelectValue placeholder="Выберите исполнителя" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Не назначен</SelectItem>
-                {executors.map((exec) => (
-                  <SelectItem key={exec.id} value={String(exec.id)}>
-                    {exec.name}
-                  </SelectItem>
+            <div>
+              <span className="field-label">Теги</span>
+              <div className="tag-buttons">
+                {settings.tags.map((t) => (
+                  <button
+                    type="button"
+                    key={t}
+                    aria-pressed={draft.tags.includes(t)}
+                    onClick={() =>
+                      set(
+                        "tags",
+                        draft.tags.includes(t)
+                          ? draft.tags.filter((x) => x !== t)
+                          : [...draft.tags, t],
+                      )
+                    }
+                  >
+                    {t}
+                  </button>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Теги</Label>
-            <div className="flex flex-wrap gap-2">
-              {allTags.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Нет доступных тегов. Добавьте их в настройках.
-                </p>
-              ) : (
-                allTags.map((tag) => {
-                  const active = formData.tags.includes(tag)
-                  return (
-                    <Badge
-                      key={tag}
-                      variant={active ? "default" : "outline"}
-                      className="cursor-pointer"
-                      onClick={() => handleTagToggle(tag)}
-                    >
-                      {tag}
-                    </Badge>
-                  )
-                })
-              )}
+                {!settings.tags.length && (
+                  <span className="muted">Добавьте теги в настройках.</span>
+                )}
+              </div>
             </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <label className="check-label">
+              <input
+                type="checkbox"
+                checked={!!draft.hiddenFromGantt}
+                onChange={(e) => set("hiddenFromGantt", e.target.checked)}
+              />{" "}
+              Скрыть из Ганта только для меня
+            </label>
+          </fieldset>
+          {error && (
+            <p role="alert" className="tracker-error">
+              {error}
+            </p>
+          )}
+          <div className="form-actions">
+            {task && (
+              <button
+                type="button"
+                className="delete-task"
+                disabled={saving}
+                onClick={() => {
+                  if (window.confirm(`Удалить задачу #${task.id}?`)) {
+                    setSaving(true);
+                    void deleteTask(task.id)
+                      .then(() => {
+                        openedId.current = null;
+                        onClose();
+                      })
+                      .catch((e) => setError(String(e.message)))
+                      .finally(() => setSaving(false));
+                  }
+                }}
+              >
+                Удалить
+              </button>
+            )}
+            <button type="button" disabled={saving} onClick={close}>
               Отмена
-            </Button>
-            <Button type="submit">{task ? "Сохранить" : "Создать"}</Button>
+            </button>
+            <button type="submit" className="accent-button" disabled={saving}>
+              {saving ? "Сохраняю…" : task ? "Сохранить" : "Создать"}
+            </button>
           </div>
         </form>
+        {task && <TaskDetails key={task.id} taskId={task.id} />}
       </DialogContent>
     </Dialog>
-  )
+  );
 }
-

@@ -1,13 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
-import type { MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from "react"
+import { useCallback, useEffect, useState } from "react"
 
-import { Header } from "@/components/header"
-import { TaskList } from "@/components/task-list"
+import { TrackerWorkspace } from "@/components/tracker-workspace"
 import { TaskForm } from "@/components/task-form"
-import { GanttChart } from "@/components/gantt-chart"
-import { TaskHoursBoard } from "@/components/task-hours-board"
 import { TaskExportModal } from "@/components/task-export-modal"
 import { Settings } from "@/components/settings"
 import { AuthModal } from "@/components/auth-modal"
@@ -47,10 +43,6 @@ export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
 
-  const [leftWidth, setLeftWidth] = useState(50)
-  const [isResizing, setIsResizing] = useState(false)
-  const containerRef = useRef<HTMLDivElement | null>(null)
-
   // при загрузке — читаем юзера
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -73,53 +65,6 @@ export default function HomePage() {
     // если нет юзера — сразу показать авторизацию
     setIsAuthModalOpen(true)
   }, [refreshFromApi])
-
-  // ресайзер
-  useEffect(() => {
-    if (!isResizing) return
-
-    const handlePointerMove = (clientX: number) => {
-      const container = containerRef.current
-      if (!container) return
-
-      const { left, width } = container.getBoundingClientRect()
-      const offsetX = clientX - left
-      const percentage = (offsetX / width) * 100
-      const clamped = Math.min(80, Math.max(20, percentage))
-
-      setLeftWidth(clamped)
-    }
-
-    const handleMouseMove = (event: MouseEvent) => {
-      handlePointerMove(event.clientX)
-    }
-
-    const handleTouchMove = (event: TouchEvent) => {
-      const touch = event.touches[0]
-      if (!touch) return
-      event.preventDefault()
-      handlePointerMove(touch.clientX)
-    }
-
-    const handlePointerUp = () => setIsResizing(false)
-
-    window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("touchmove", handleTouchMove, { passive: false })
-    window.addEventListener("mouseup", handlePointerUp)
-    window.addEventListener("touchend", handlePointerUp)
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove)
-      window.removeEventListener("touchmove", handleTouchMove)
-      window.removeEventListener("mouseup", handlePointerUp)
-      window.removeEventListener("touchend", handlePointerUp)
-    }
-  }, [isResizing])
-
-  const startResizing = (event: ReactMouseEvent | ReactTouchEvent) => {
-    event.preventDefault()
-    setIsResizing(true)
-  }
 
   const handleCreateTask = useCallback(() => {
     if (isReadOnlyUser(currentUser)) return
@@ -198,7 +143,7 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     setAuthError(null)
-    await logout().catch((e) => console.error("logout failed:", e))
+    try {await logout()} catch(e) {setAuthError(e instanceof Error?e.message:'Не удалось выйти');return}
     if (typeof window !== "undefined") {
       localStorage.removeItem("st_user")
     }
@@ -216,9 +161,7 @@ export default function HomePage() {
 
     const handleAuthExpired = () => {
       setAuthError("Сессия истекла. Войдите снова.")
-      setShowTaskForm(false)
       setShowSettings(false)
-      setEditingTask(undefined)
       clearTasksState()
       setCurrentUser(null)
       setIsProfileModalOpen(false)
@@ -247,54 +190,9 @@ export default function HomePage() {
     <div className="app-shell">
       {currentUser ? (
         <>
-          <Header
-            onOpenSettings={handleOpenSettings}
-            onOpenAuth={handleHeaderUserClick}
-            onOpenExport={handleOpenExport}
-            user={currentUser}
-          />
+          {authError && <p className="tracker-error" role="alert">{authError}</p>}
+          <TrackerWorkspace onCreate={handleCreateTask} onEdit={handleEditTask} onSettings={handleOpenSettings} onExport={handleOpenExport} onProfile={handleHeaderUserClick} canEdit={!isReadOnlyUser(currentUser)} />
 
-          {authError ? (
-            <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
-          ) : null}
-
-          <main className="flex-1 overflow-y-auto">
-            <div className="flex h-full flex-col gap-4 p-4">
-              <div ref={containerRef} className="flex min-h-[280px] flex-1 items-stretch">
-                <div
-                  className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
-                  style={{ flexBasis: `${leftWidth}%` }}
-                >
-                  <TaskList
-                    canEdit={!isReadOnlyUser(currentUser)}
-                    onCreateTask={handleCreateTask}
-                    onEditTask={handleEditTask}
-                  />
-                </div>
-                <div
-                  className="mx-4 flex w-1 cursor-col-resize items-stretch"
-                  onMouseDown={startResizing}
-                  onTouchStart={startResizing}
-                >
-                  <div className="h-full w-full rounded bg-border/70 transition-colors hover:bg-primary/45" />
-                </div>
-                <div
-                  className="flex min-w-[200px] flex-1 flex-col overflow-hidden"
-                  style={{ flexBasis: `${100 - leftWidth}%` }}
-                >
-                  <GanttChart canEdit={!isReadOnlyUser(currentUser)} onEditTask={handleEditTask} />
-                </div>
-              </div>
-            </div>
-            <div className="px-4 pb-4">
-              <TaskHoursBoard canEdit={!isReadOnlyUser(currentUser)} onEditTask={handleEditTask} />
-            </div>
-          </main>
-          <footer className="px-4 pb-2">
-            <div className="h-1 bg-neutral-200 dark:bg-neutral-800" />
-          </footer>
-
-          <TaskForm task={editingTask} open={showTaskForm} onClose={handleCloseTaskForm} />
           <TaskExportModal open={showExportModal} onOpenChange={setShowExportModal} />
           <Settings open={showSettings} onClose={() => setShowSettings(false)} />
         </>
@@ -302,6 +200,7 @@ export default function HomePage() {
         <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
       ) : null}
 
+      <TaskForm task={editingTask} open={!!currentUser && showTaskForm} onClose={handleCloseTaskForm} />
       {!currentUser && (
         <AuthModal
           open={isAuthModalOpen}

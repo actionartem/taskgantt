@@ -78,8 +78,7 @@ export function AuthModal({
         <DialogHeader>
           <DialogTitle>Добро пожаловать</DialogTitle>
           <DialogDescription>
-            Авторизуйтесь, чтобы продолжить работу с системой управления задачами. Если у вас нет аккаунта, можно быстро
-            зарегистрироваться.
+            Войдите в SimpleTracker со своим логином и паролем.
           </DialogDescription>
         </DialogHeader>
 

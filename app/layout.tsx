@@ -1,15 +1,15 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
+import { Tektur, Onest, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 import { AppProvider } from "@/contexts/app-context"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const onest = Onest({subsets:['latin','cyrillic'],variable:'--font-onest',display:'swap'})
+const tektur = Tektur({subsets:['latin','cyrillic'],variable:'--font-tektur',display:'swap'})
+const mono = JetBrains_Mono({subsets:['latin','cyrillic'],variable:'--font-jbm',display:'swap'})
 
 export const metadata: Metadata = {
-  title: "Мониторинг задач",
+  title: "SimpleTracker",
   description: "Мониторинг задач",
   generator: "artivtw",
   icons: {
@@ -40,9 +40,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className={`font-sans antialiased`}>
+      <body className={`${onest.variable} ${tektur.variable} ${mono.variable} font-sans antialiased`}>
         <AppProvider>{children}</AppProvider>
-        <Analytics />
+
       </body>
     </html>
   )

@@ -48,7 +48,7 @@ export function ProfileModal({
   const [error, setError] = useState<string | null>(null)
 
   // Telegram
-  const [tgLoading, setTgLoading] = useState(false)
+  const [_tgLoading, setTgLoading] = useState(false)
   const [tgCode, setTgCode] = useState<string | null>(null)
   const [tgLink, setTgLink] = useState<string | null>(null)
   const [isTgLinked, setIsTgLinked] = useState<boolean>(Boolean(user.telegram_id))
@@ -174,7 +174,7 @@ export function ProfileModal({
         <DialogHeader>
           <DialogTitle>Профиль пользователя</DialogTitle>
           <DialogDescription>
-            Здесь можно изменить имя и роль, а ещё привязать Telegram.
+            Профиль и пароль. Telegram временно выключен.
           </DialogDescription>
         </DialogHeader>
 
@@ -269,10 +269,10 @@ export function ProfileModal({
                 size="sm"
                 type="button"
                 onClick={handleTelegramClick}
-                disabled={tgLoading || isTgLinked}
+                disabled={true}
                 title={isTgLinked ? "Telegram уже привязан" : ""}
               >
-                {isTgLinked ? "Telegram привязан" : tgLoading ? "Запрос..." : "Привязать Telegram"}
+                Telegram временно выключен
               </Button>
             </div>
 

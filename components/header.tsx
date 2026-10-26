@@ -138,7 +138,7 @@ export const Header = memo(function Header({ onOpenSettings, onOpenAuth, onOpenE
 
           <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs" onClick={onOpenExport}>
             <Download className="h-4 w-4" />
-            <span className="whitespace-nowrap">Выгрузить EXEL</span>
+            <span className="whitespace-nowrap">Выгрузить Excel</span>
           </Button>
         </div>
       </div>

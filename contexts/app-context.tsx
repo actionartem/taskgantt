@@ -1,329 +1,233 @@
-// app/contexts/app-context.tsx
-"use client"
-
-import type React from "react"
+"use client";
 import {
   createContext,
   useContext,
   useState,
   useEffect,
   useCallback,
-  useMemo,
-} from "react"
-
-import type { Task, AppSettings, GroupBy, TaskStatus } from "@/lib/types"
-import { storage } from "@/lib/storage"
-import { addStatusChange } from "@/lib/task-utils"
-
-// Используем только существующие экспорты из lib/api.ts
+  useRef,
+} from "react";
+import type React from "react";
+import type { Task, AppSettings, GroupBy, TaskStatus } from "@/lib/types";
+import { storage } from "@/lib/storage";
 import {
   fetchTasks,
   createTaskNew,
   updateTaskNew,
   deleteTaskNew,
   getUsers,
-  getBoardTags, // <-- теги берём отсюда
-} from "@/lib/api"
-
+  getBoardTags,
+} from "@/lib/api";
 interface AppContextType {
-  tasks: Task[]
-  settings: AppSettings
-  theme: "light" | "dark"
-  groupBy: GroupBy
-  selectedStatuses: TaskStatus[]
-  setTasks: (tasks: Task[]) => void
-  clearTasksState: () => void
-  addTask: (task: Task) => void
-  updateTask: (id: number, updates: Partial<Task>) => void
-  deleteTask: (id: number) => void
-  setSettings: (settings: React.SetStateAction<AppSettings>) => void
-  refreshFromApi: () => Promise<void>
-  toggleTheme: () => void
-  setGroupBy: (groupBy: GroupBy) => void
-  toggleSelectedStatus: (status: TaskStatus) => void
+  tasks: Task[];
+  settings: AppSettings;
+  theme: "light" | "dark";
+  groupBy: GroupBy;
+  selectedStatuses: TaskStatus[];
+  lastRefresh: string | null;
+  refreshError: string | null;
+  loading: boolean;
+  setTasks: (tasks: Task[]) => void;
+  clearTasksState: () => void;
+  addTask: (task: Task) => Promise<void>;
+  updateTask: (id: number, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (id: number) => Promise<void>;
+  setSettings: (settings: React.SetStateAction<AppSettings>) => void;
+  refreshFromApi: () => Promise<void>;
+  toggleTheme: () => void;
+  setGroupBy: (group: GroupBy) => void;
+  toggleSelectedStatus: (status: TaskStatus) => void;
 }
-
-const AppContext = createContext<AppContextType | undefined>(undefined)
-
+const AppContext = createContext<AppContextType | undefined>(undefined);
+function owner() {
+  try {
+    return String(
+      JSON.parse(localStorage.getItem("st_user") || "null")?.id || "",
+    );
+  } catch {
+    return "";
+  }
+}
+function hiddenMap(): Record<string, boolean> {
+  try {
+    const key = `st_hidden:${owner()}`,
+      saved = localStorage.getItem(key);
+    if (saved) return JSON.parse(saved);
+    const migrated = Object.fromEntries(
+      storage
+        .getTasks()
+        .filter((t) => t.hiddenFromGantt)
+        .map((t) => [t.id, true]),
+    );
+    localStorage.setItem(key, JSON.stringify(migrated));
+    return migrated;
+  } catch {
+    return {};
+  }
+}
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [tasks, setTasksState] = useState<Task[]>([])
-  const [settings, setSettingsState] = useState<AppSettings>({ executors: [], tags: [] })
-  const [theme, setTheme] = useState<"light" | "dark">("light")
-  const [groupBy, setGroupBy] = useState<GroupBy>("none")
-  const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([])
-  const [mounted, setMounted] = useState(false)
-
-  // ---- утилита согласования старых/новых полей исполнителя
-  // Главная правка: пустые/невалидные значения и 0 -> null, неизменённое поле -> undefined
-  const safeAssigneeId = (t: Partial<Task>): number | null | undefined => {
-    const anyT = t as any
-
-    // 1) Явно передали число
-    if (typeof anyT?.assigneeId === "number") {
-      return anyT.assigneeId === 0 ? null : anyT.assigneeId
-    }
-
-    // 2) Явно null
-    if (anyT?.assigneeId === null) return null
-
-    // 3) Поддержка старого поля assignee (строка)
-    if (anyT?.assignee != null) {
-      const raw = String(anyT.assignee).trim().toLowerCase()
-      if (raw === "" || raw === "none" || raw === "null" || raw === "undefined") return null
-
-      const n = Number(raw)
-      // Важно: Number("") === 0 — считаем отсутствием значения
-      if (!Number.isFinite(n) || n === 0) return null
-      return n
-    }
-
-    // 4) Поле не меняли — не отправляем
-    return undefined
-  }
-
+  const [tasks, setTasks] = useState<Task[]>([]),
+    [settings, setSettings] = useState<AppSettings>({
+      executors: [],
+      tags: [],
+    });
+  const [theme, setTheme] = useState<"light" | "dark">("light"),
+    [groupBy, setGroupBy] = useState<GroupBy>("none");
+  const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([]);
+  const [lastRefresh, setLastRefresh] = useState<string | null>(null),
+    [refreshError, setRefreshError] = useState<string | null>(null),
+    [loading, setLoading] = useState(false);
+  const sequence = useRef(0);
   const refreshFromApi = useCallback(async () => {
-    // Параллельно тянем пользователей, теги и задачи
-    const [users, tags, apiTasks] = await Promise.all([
-      getUsers(),
-      // getBoardTags теперь может внутри ходить на /tags — id игнорируется
-      getBoardTags(1),
-      fetchTasks(),
-    ])
-
-    const executors = users.map((u) => ({
-      id: u.id,
-      name: u.name,
-      role: (u as any).role_text ?? undefined,
-    }))
-    const tagNames = tags.map((t) => t.title)
-
-    // --- НОВОЕ: переносим локальный флаг hiddenFromGantt по id,
-    // если бэк его не отдаёт (или отдаёт как undefined)
-    const localHiddenMap = storage.getTasks().reduce<Record<number, boolean>>((acc, t) => {
-      acc[t.id] = !!t.hiddenFromGantt
-      return acc
-    }, {})
-    const localStatusLogMap = storage.getTasks().reduce<Record<number, Task["statusLog"]>>(
-      (acc, t) => {
-        acc[t.id] = Array.isArray(t.statusLog) ? t.statusLog : []
-        return acc
-      },
-      {},
-    )
-
-    const mergedTasks: Task[] = apiTasks.map((t: any) => ({
-      ...t,
-      hiddenFromGantt:
-        t.hiddenFromGantt ??
-        (t.hidden_from_gantt != null ? Boolean(t.hidden_from_gantt) : undefined) ??
-        localHiddenMap[t.id] ??
-        false,
-      statusLog: Array.isArray(t.statusLog) ? t.statusLog : localStatusLogMap[t.id] ?? [],
-    }))
-
-    setSettingsState((prev) => {
-      const merged: AppSettings = { ...prev, executors, tags: tagNames }
-      storage.saveSettings(merged)
-      return merged
-    })
-
-    setTasksState(mergedTasks)
-    storage.saveTasks(mergedTasks)
-  }, [])
-
-  // Быстрая отрисовка настроек из localStorage. Данные задач тянем только после входа.
-  useEffect(() => {
-    setSettingsState(storage.getSettings())
-
-    const savedTheme = storage.getTheme()
-    setTheme(savedTheme)
-    if (savedTheme === "dark") document.documentElement.classList.add("dark")
-
-    setMounted(true)
-  }, [])
-
-  // --- публичные методы контекста
-  const setTasks = (newTasks: Task[]) => {
-    setTasksState(newTasks)
-    storage.saveTasks(newTasks)
-  }
-
-  const clearTasksState = useCallback(() => {
-    setTasksState([])
-  }, [])
-
-  const addTask = (task: Task) => {
-    // оптимистично
-    const initialStatusLog =
-      Array.isArray(task.statusLog) && task.statusLog.length > 0
-        ? task.statusLog
-        : [
-            {
-              datetime: new Date().toISOString(),
-              oldStatus: task.status,
-              newStatus: task.status,
-              user: "Создание задачи",
-            },
-          ]
-    const nextTask: Task = { ...task, statusLog: initialStatusLog }
-    setTasksState((prev) => {
-      const next = [...prev, nextTask]
-      storage.saveTasks(next)
-      return next
-    })
-
-    createTaskNew({
-      id: task.id,
-      title: task.title,
-      description: task.description ?? null,
-      emailThread: task.emailThread ?? null,
-      documentHistory: task.documentHistory ?? null,
-      status: task.status,
-      priority: task.priority,
-      approvedHours: task.approvedHours ?? null,
-      spentHours: task.spentHours ?? null,
-      assigneeId: safeAssigneeId(task),
-      startDate: task.startDate ?? null,
-      endDate: task.endDate ?? null,
-      link: (task as any).link ?? null,
-    })
-      .then(() => refreshFromApi())
-      .catch((e) => {
-        console.error("addTask failed:", e)
-        setTasksState((prev) => {
-          const next = prev.filter((t) => t.id !== task.id)
-          storage.saveTasks(next)
-          return next
-        })
-      })
-  }
-
-  const updateTask = (id: number, updates: Partial<Task>) => {
-    // Оптимистично кладём в локальный стейт/LS
-    setTasksState((prev) => {
-      const next = prev.map((t) => {
-        if (t.id !== id) return t
-        if (updates.status && updates.status !== t.status) {
-          const updatedLog = addStatusChange(
-            { ...t, statusLog: Array.isArray(t.statusLog) ? t.statusLog : [] },
-            updates.status,
-          )
-          return { ...t, ...updates, statusLog: updatedLog }
-        }
-        return { ...t, ...updates }
-      })
-      storage.saveTasks(next)
-      return next
-    })
-
-    // --- НОВОЕ: если меняется ТОЛЬКО hiddenFromGantt — НЕ трогаем API.
-    const presentKeys = Object.keys(updates).filter(
-      (k) => (updates as any)[k] !== undefined,
-    )
-    const onlyHideToggle = presentKeys.length === 1 && presentKeys[0] === "hiddenFromGantt"
-    if (onlyHideToggle) {
-      // Ничего не шлём — локально уже сохранено, гант сам отфильтрует.
-      return
+    const user = owner();
+    if (!user) return;
+    const seq = ++sequence.current;
+    setLoading(true);
+    try {
+      const [users, tags, data] = await Promise.all([
+        getUsers(),
+        getBoardTags(1),
+        fetchTasks(),
+      ]);
+      if (seq !== sequence.current || user !== owner()) return;
+      const hidden = hiddenMap();
+      setTasks(data.map((t) => ({ ...t, hiddenFromGantt: !!hidden[t.id] })));
+      setSettings({
+        executors: users.map((u) => ({
+          id: Number(u.id),
+          name: u.name,
+          role: u.role_text,
+        })),
+        tags: tags.map((t) => t.title),
+      });
+      setLastRefresh(new Date().toISOString());
+      setRefreshError(null);
+    } catch (e) {
+      if (seq === sequence.current)
+        setRefreshError(
+          e instanceof Error ? e.message : "Не удалось обновить данные",
+        );
+      throw e;
+    } finally {
+      if (seq === sequence.current) setLoading(false);
     }
-
-    updateTaskNew(id, {
-      title: updates.title,
-      description: updates.description,
-      emailThread: updates.emailThread,
-      documentHistory: updates.documentHistory,
-      status: updates.status,
-      priority: updates.priority,
-      approvedHours: updates.approvedHours,
-      spentHours: updates.spentHours,
-      assigneeId: safeAssigneeId(updates),
-      startDate: updates.startDate,
-      endDate: updates.endDate,
-      link: (updates as any).link,
-    })
-      .then(() => refreshFromApi())
-      .catch((e) => {
-        console.error("updateTask failed:", e)
-        refreshFromApi().catch(() => {})
-      })
-  }
-
-  const deleteTask = (id: number) => {
-    const snapshot = tasks
-    setTasksState((prev) => {
-      const next = prev.filter((t) => t.id !== id)
-      storage.saveTasks(next)
-      return next
-    })
-
-    deleteTaskNew(id)
-      .then(() => refreshFromApi())
-      .catch((e) => {
-        console.error("deleteTask failed:", e)
-        setTasksState(snapshot)
-        storage.saveTasks(snapshot)
-      })
-  }
-
-  // >>> Безопасная запись настроек (важно!)
-  const setSettings = (nextSettings: React.SetStateAction<AppSettings>) => {
-    setSettingsState((prev) => {
-      const value =
-        typeof nextSettings === "function"
-          ? (nextSettings as (prevState: AppSettings) => AppSettings)(prev)
-          : nextSettings
-
-      if (!value || typeof value !== "object") {
-        console.warn("Skip invalid settings:", value)
-        return prev
-      }
-
-      storage.saveSettings(value)
-      return value
-    })
-  }
-
+  }, []);
+  useEffect(() => {
+    const saved = storage.getTheme();
+    setTheme(saved);
+    document.documentElement.classList.toggle("dark", saved === "dark");
+    const refresh = () => {
+      if (document.visibilityState === "visible" && owner())
+        void refreshFromApi().catch(() => {});
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const timer = setInterval(refresh, 120000);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [refreshFromApi]);
+  const clearTasksState = useCallback(() => {
+    sequence.current++;
+    setTasks([]);
+    setSettings({ executors: [], tags: [] });
+    setLoading(false);
+    setLastRefresh(null);
+    setRefreshError(null);
+  }, []);
+  const mergeSaved = (saved: Task) => {
+    sequence.current++;
+    const hidden = hiddenMap();
+    setTasks((prev) =>
+      prev.some((t) => t.id === saved.id)
+        ? prev.map((t) =>
+            t.id === saved.id
+              ? { ...saved, hiddenFromGantt: !!hidden[saved.id] }
+              : t,
+          )
+        : [...prev, { ...saved, hiddenFromGantt: !!hidden[saved.id] }],
+    );
+    setLoading(false);
+  };
+  const addTask = async (task: Task) => {
+    const user = owner();
+    const saved = await createTaskNew(task);
+    if (user !== owner()) return;
+    mergeSaved(saved);
+    void refreshFromApi().catch(() => {});
+  };
+  const updateTask = async (id: number, updates: Partial<Task>) => {
+    const user = owner();
+    if (updates.hiddenFromGantt !== undefined) {
+      const map = hiddenMap();
+      map[id] = updates.hiddenFromGantt;
+      localStorage.setItem(`st_hidden:${owner()}`, JSON.stringify(map));
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, hiddenFromGantt: updates.hiddenFromGantt } : t,
+        ),
+      );
+    }
+    const patch = { ...updates };
+    delete patch.hiddenFromGantt;
+    delete patch.assigneeName;
+    delete patch.statusLog;
+    delete patch.id;
+    if (!Object.keys(patch).length) return;
+    const saved = await updateTaskNew(id, patch);
+    if (user !== owner()) return;
+    mergeSaved(saved);
+    void refreshFromApi().catch(() => {});
+  };
+  const deleteTask = async (id: number) => {
+    const user = owner();
+    await deleteTaskNew(id);
+    if (user !== owner()) return;
+    sequence.current++;
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+  };
   const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light"
-    setTheme(next)
-    storage.saveTheme(next)
-    document.documentElement.classList.toggle("dark", next === "dark")
-  }
-
-  const toggleSelectedStatus = useCallback((status: TaskStatus) => {
-    setSelectedStatuses((prev) =>
-      prev.includes(status) ? prev.filter((item) => item !== status) : [...prev, status],
-    )
-  }, [])
-
-  // value рассчитываем ДО guard'а, чтобы порядок хуков не менялся
-  const value = useMemo<AppContextType>(
-    () => ({
-      tasks,
-      settings,
-      theme,
-      groupBy,
-      selectedStatuses,
-      setTasks,
-      clearTasksState,
-      addTask,
-      updateTask,
-      deleteTask,
-      setSettings,
-      refreshFromApi,
-      toggleTheme,
-      setGroupBy,
-      toggleSelectedStatus,
-    }),
-    [tasks, settings, theme, groupBy, selectedStatuses, clearTasksState, refreshFromApi, toggleSelectedStatus],
-  )
-
-  if (!mounted) return null
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    storage.saveTheme(next);
+    document.documentElement.classList.toggle("dark", next === "dark");
+  };
+  return (
+    <AppContext.Provider
+      value={{
+        tasks,
+        settings,
+        theme,
+        groupBy,
+        selectedStatuses,
+        lastRefresh,
+        refreshError,
+        loading,
+        setTasks,
+        clearTasksState,
+        addTask,
+        updateTask,
+        deleteTask,
+        setSettings,
+        refreshFromApi,
+        toggleTheme,
+        setGroupBy,
+        toggleSelectedStatus: (status) =>
+          setSelectedStatuses((prev) =>
+            prev.includes(status)
+              ? prev.filter((s) => s !== status)
+              : [...prev, status],
+          ),
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
 }
-
 export function useApp() {
-  const context = useContext(AppContext)
-  if (!context) throw new Error("useApp must be used within AppProvider")
-  return context
+  const context = useContext(AppContext);
+  if (!context) throw new Error("useApp must be used within AppProvider");
+  return context;
 }

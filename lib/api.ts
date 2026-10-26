@@ -42,7 +42,10 @@ function forgetStoredAuth() {
   window.localStorage.removeItem("st_user")
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+export class ApiError extends Error {
+  constructor(public status:number,message:string,cause?:unknown){super(message,{cause});this.name='ApiError'}
+}
+export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),
@@ -54,12 +57,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const res = await fetch(API_BASE + path, {
     credentials: "include",
+    signal: AbortSignal.timeout(30000),
     ...options,
     headers,
-  })
+  }).catch((cause:unknown)=>{throw new ApiError(0,'Связь прервалась. Не удалось получить ответ сервера.',cause)})
 
   if (!res.ok) {
-    if (res.status === 401 && !path.startsWith("/auth/")) {
+    if (res.status === 401 && !path.startsWith("/auth/") && token===getStoredAuthToken()) {
       clearStoredAuth()
     }
     let message = `API error ${res.status}`
@@ -67,17 +71,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       const data = await res.json()
       if ((data as any)?.error) message = (data as any).error
     } catch {
-      const text = await res.text()
-      if (text) message = text
+      // The response body may already have been consumed.
     }
-    throw new Error(message)
+    throw new ApiError(res.status,message)
   }
 
   if (res.status === 204) {
     // @ts-expect-error — у 204 тела нет
     return {}
   }
-  return res.json() as Promise<T>
+  return res.json().catch((cause:unknown)=>{throw new ApiError(0,'Не удалось прочитать ответ сервера',cause)}) as Promise<T>
 }
 
 /* ===================== HELPERS ===================== */
@@ -126,7 +129,9 @@ function fromApiTask(t: ApiTask): Task {
     approvedHours: numberFromApi(t.approved_hours),
     spentHours: numberFromApi(t.spent_hours),
     tags: (t.tags || []).map((x) => x.title),
-    hiddenFromGantt: false,
+    deadlineConfirmed: t.deadline_confirmed ?? false,
+    nextActionAt: t.next_action_at, nextActionText: t.next_action_text,
+    replyDueAt: t.reply_due_at, waitingFor: t.waiting_for,
   }
 }
 
@@ -147,7 +152,9 @@ function toApiCreate(input: CreateTaskInput) {
     link_url: input.link ?? null,
     approved_hours: input.approvedHours ?? null,
     spent_hours: input.spentHours ?? null,
-    created_by: input.assigneeId ?? null,
+    tags: input.tags ?? [], deadline_confirmed: input.deadlineConfirmed ?? false,
+    next_action_at: input.nextActionAt ?? null, next_action_text: input.nextActionText ?? null,
+    reply_due_at: input.replyDueAt ?? null, waiting_for: input.waitingFor ?? null,
   }
 }
 function toApiPatch(patch: PatchTaskInput) {
@@ -169,6 +176,12 @@ function toApiPatch(patch: PatchTaskInput) {
   if (patch.approvedHours !== undefined) out.approved_hours = patch.approvedHours ?? null
   if (patch.spentHours !== undefined) out.spent_hours = patch.spentHours ?? null
   if (patch.updatedBy !== undefined) out.updated_by = patch.updatedBy ?? null
+  if (patch.tags !== undefined) out.tags = patch.tags
+  if (patch.deadlineConfirmed !== undefined) out.deadline_confirmed = patch.deadlineConfirmed
+  if (patch.nextActionAt !== undefined) out.next_action_at = patch.nextActionAt
+  if (patch.nextActionText !== undefined) out.next_action_text = patch.nextActionText
+  if (patch.replyDueAt !== undefined) out.reply_due_at = patch.replyDueAt
+  if (patch.waitingFor !== undefined) out.waiting_for = patch.waitingFor
   return out
 }
 
@@ -264,11 +277,9 @@ export async function requestTelegramLink(login: string) {
 }
 
 export async function logout() {
-  try {
-    return await request<{ ok: boolean }>("/auth/logout", { method: "POST" })
-  } finally {
-    forgetStoredAuth()
-  }
+  const result = await request<{ ok: boolean }>("/auth/logout", { method: "POST" });
+  forgetStoredAuth();
+  return result;
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {
@@ -371,19 +382,41 @@ export async function fetchTasks(opts?: {
   return data.map(fromApiTask)
 }
 
-export async function createTaskNew(input: CreateTaskInput) {
-  return request<{ id: number }>(`/tasks`, {
-    method: "POST",
-    body: JSON.stringify(toApiCreate(input)),
-  })
+async function saveTask(path: string, method: string, body: Record<string, unknown>, id?: number): Promise<Task> {
+  try { return fromApiTask(await request<ApiTask>(path,{method,body:JSON.stringify(body)})); }
+  catch(error) {
+    // On ambiguous transport/server failure reconcile the intended fields before offering a retry.
+    if (id && error instanceof ApiError && (error.status===0 || error.status>=500)) {
+      try {
+        const actual = await request<ApiTask>(`/tasks/${id}`);
+        const match = Object.entries(body).every(([key,value]) => {
+          if (['created_by','updated_by','id'].includes(key)) return true;
+          const found = key==='tags' ? actual.tags.map(t=>t.title).sort() : (actual as unknown as Record<string,unknown>)[key];
+          const expected = key==='tags' ? [...(value as string[])].sort() : value;
+          if (key.endsWith('_at') && found && expected) return new Date(String(found)).getTime()===new Date(String(expected)).getTime();
+          return JSON.stringify(found ?? null)===JSON.stringify(expected ?? null) || (typeof expected==='number' && Number(found)===expected);
+        });
+        if (match) return fromApiTask(actual);
+      } catch { /* keep the original failure and the user's draft */ }
+      throw new Error('Не удалось подтвердить сохранение. Черновик сохранён в форме. Проверьте соединение и повторите сохранение.',{cause:error});
+    }
+    throw error;
+  }
 }
-
+export async function createTaskNew(input: CreateTaskInput) {
+  return saveTask('/tasks','POST',toApiCreate(input),input.id);
+}
 export async function updateTaskNew(id: number, patch: PatchTaskInput) {
-  const data = await request<ApiTask>(`/tasks/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(toApiPatch(patch)),
-  })
-  return fromApiTask(data)
+  return saveTask(`/tasks/${id}`,'PATCH',toApiPatch(patch),id);
+}
+export async function fetchTask(id:number) {return fromApiTask(await request<ApiTask>(`/tasks/${id}`));}
+
+export async function downloadDocument(doc:{id:string;task_id:string;file_name:string|null}) {
+  const token=getStoredAuthToken()
+  const response=await fetch(`${API_BASE}/tasks/${doc.task_id}/documents/${doc.id}/download`,{credentials:'include',headers:token?{Authorization:`Bearer ${token}`}:{}})
+  if(!response.ok)throw new Error('Не удалось скачать документ')
+  const objectUrl=URL.createObjectURL(await response.blob())
+  const a=document.createElement('a');a.href=objectUrl;a.download=doc.file_name||'document';a.click();setTimeout(()=>URL.revokeObjectURL(objectUrl),10000)
 }
 
 export async function deleteTaskNew(id: number) {
