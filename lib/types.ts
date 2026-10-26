@@ -40,6 +40,7 @@ export interface Task {
   tags: string[];            // пока строки в UI (названия тегов)
   hiddenFromGantt?: boolean;
   deadlineConfirmed?: boolean;
+  automationLocked?: boolean;
   nextActionAt?: string | null;
   nextActionText?: string | null;
   replyDueAt?: string | null;
@@ -131,6 +132,7 @@ export interface ApiTask {
   approved_hours?: number | string | null;
   spent_hours?: number | string | null;
   deadline_confirmed?: boolean;
+  automation_locked?: boolean;
   next_action_at?: string | null;
   next_action_text?: string | null;
   reply_due_at?: string | null;
@@ -186,6 +188,7 @@ export const STATUS_API_TO_RU = (s: ApiStatus | null): TaskStatus => {
 
 // Ввод для создания. id опционален — пользователь может задать свой.
 export type CreateTaskInput = {
+  automationLocked?: boolean;
   deadlineConfirmed?: boolean;
   nextActionAt?: string | null;
   nextActionText?: string | null;

@@ -19,11 +19,11 @@ const NEXT_ACTION: Record<TaskStatus, string | null> = {
   оценка: "Получить оценку работ",
   "готова к разработке": "Запланировать начало разработки",
   разработка: "Завершить разработку",
-  ревью: "Проверить результат разработки",
+  ревью: "Проверить АЗ",
   завершена: null,
 };
-export function nextAction(task: Pick<Task, "status" | "nextActionText" | "waitingFor">) {
-  if (task.status === "завершена") return null;
+export function nextAction(task: Pick<Task, "status" | "nextActionText" | "waitingFor" | "automationLocked">) {
+  if (task.automationLocked || ["завершена", "оценка", "готова к разработке", "разработка"].includes(task.status)) return null;
   return task.nextActionText?.trim() || (task.status === "на согласовании" && task.waitingFor?.trim()
     ? `Получить согласование · ${task.waitingFor.trim()}` : NEXT_ACTION[task.status]);
 }

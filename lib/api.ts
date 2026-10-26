@@ -129,6 +129,7 @@ function fromApiTask(t: ApiTask): Task {
     approvedHours: numberFromApi(t.approved_hours),
     tags: (t.tags || []).map((x) => x.title),
     deadlineConfirmed: t.deadline_confirmed ?? false,
+    automationLocked: t.automation_locked ?? false,
     nextActionAt: t.next_action_at, nextActionText: t.next_action_text,
     replyDueAt: t.reply_due_at, waitingFor: t.waiting_for,
   }
@@ -151,6 +152,7 @@ function toApiCreate(input: CreateTaskInput) {
     link_url: input.link ?? null,
     approved_hours: input.approvedHours ?? null,
     tags: input.tags ?? [], deadline_confirmed: input.deadlineConfirmed ?? false,
+    automation_locked: input.automationLocked ?? false,
     next_action_at: input.nextActionAt ?? null, next_action_text: input.nextActionText ?? null,
     reply_due_at: input.replyDueAt ?? null, waiting_for: input.waitingFor ?? null,
   }
@@ -175,6 +177,7 @@ function toApiPatch(patch: PatchTaskInput) {
   if (patch.updatedBy !== undefined) out.updated_by = patch.updatedBy ?? null
   if (patch.tags !== undefined) out.tags = patch.tags
   if (patch.deadlineConfirmed !== undefined) out.deadline_confirmed = patch.deadlineConfirmed
+  if (patch.automationLocked !== undefined) out.automation_locked = patch.automationLocked
   if (patch.nextActionAt !== undefined) out.next_action_at = patch.nextActionAt
   if (patch.nextActionText !== undefined) out.next_action_text = patch.nextActionText
   if (patch.replyDueAt !== undefined) out.reply_due_at = patch.replyDueAt

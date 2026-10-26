@@ -35,6 +35,7 @@ const empty = (): Task => ({
   approvedHours: null,
   link: "",
   deadlineConfirmed: false,
+  automationLocked: false,
   nextActionAt: null,
   nextActionText: "",
   replyDueAt: null,
@@ -250,6 +251,10 @@ export function TaskForm({
                 />
               </label>
             </div>
+            <label className="automation-switch">
+              <input type="checkbox" checked={!!draft.automationLocked} onChange={e => set("automationLocked", e.target.checked)} />
+              <span>Согласована — дальше вручную</span>
+            </label>
             <label>
               Описание
               <textarea

@@ -114,7 +114,8 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
     let live = true;
     request<{ items: JiraSnapshot[] }>("/jira")
       .then((r) => {
-        if (live) setJira(prev => JSON.stringify(prev) === JSON.stringify(r.items) ? prev : r.items);
+        const az = r.items.map(item => item.issue_role === "az" ? item : { ...item, status: null, assignee: null, checked_at: null });
+        if (live) setJira(prev => JSON.stringify(prev) === JSON.stringify(az) ? prev : az);
       })
       .catch(() => {});
     return () => {
@@ -638,9 +639,9 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
                             {task.title}
                             {showJira && (
                               <small>
-                                {j
-                                  ? `${j.issue_key} · ${j.status || "нет снимка"} · ${j.checked_at ? j.assignee || "не назначен" : "не загружено"}`
-                                  : "Jira не связана"}
+                                {j?.issue_role === "az"
+                                  ? `АЗ ${j.issue_key} · ${j.status || "нет снимка"} · ${j.checked_at ? j.assignee || "не назначен" : "не загружено"}`
+                                  : "АЗ не привязана"}
                               </small>
                             )}
                           </a>
