@@ -706,7 +706,7 @@ button[aria-pressed="true"]:not(.status-chip) {
 .task-timeline {
   position: relative;
   flex-shrink: 0;
-  overflow: hidden;
+  overflow: clip;
   background-image:
     linear-gradient(
       to right,
@@ -747,6 +747,26 @@ button[aria-pressed="true"]:not(.status-chip) {
 .selected .gantt-bar {
   outline: 1px solid var(--st-ink);
   outline-offset: 2px;
+}
+.gantt-bar:focus-visible {
+  outline: 2px solid var(--st-ink);
+  outline-offset: 2px;
+}
+.gantt-bar-label {
+  position: sticky;
+  left: calc(var(--list-width) + 4px);
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  padding: 0 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 22px;
+  font-size: 12px;
+  font-weight: 600;
+  user-select: none;
+  pointer-events: none;
 }
 .bar-handle {
   position: absolute;

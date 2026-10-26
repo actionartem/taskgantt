@@ -50,6 +50,7 @@ type Drag = {
   start: number;
   end: number;
   mode: "move" | "start" | "end";
+  moved: boolean;
 };
 export const TrackerWorkspace = memo(function TrackerWorkspace({
   onCreate,
@@ -116,6 +117,7 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
     [saving, setSaving] = useState(false);
   const drag = useRef<Drag | null>(null),
     scroll = useRef<HTMLDivElement>(null);
+  const suppressBarClick = useRef(false);
   useEffect(() => {
     let live = true;
     request<{ items: JiraSnapshot[] }>("/jira")
@@ -235,7 +237,7 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
     }
   };
   const startDrag = (e: PointerEvent, task: Task, mode: Drag["mode"]) => {
-    if (!canEdit || !task.startDate || !task.endDate || saving) return;
+    if (e.button !== 0 || !e.isPrimary || !canEdit || !task.startDate || !task.endDate || saving) return;
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -245,12 +247,19 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
       start: day(task.startDate),
       end: day(task.endDate),
       mode,
+      moved: false,
     };
+    suppressBarClick.current = mode !== "move";
     setSelected(task.id);
   };
   const moveDrag = (e: PointerEvent) => {
     const d = drag.current;
     if (!d) return;
+    if (Math.abs(e.clientX - d.x) >= 4) {
+      d.moved = true;
+      suppressBarClick.current = true;
+    }
+    if (!d.moved) return;
     const delta = Math.round((e.clientX - d.x) / cell);
     const start =
       d.mode === "end"
@@ -696,25 +705,44 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
                             <>
                               <div
                                 className="gantt-bar"
+                                role="button"
+                                tabIndex={canEdit && !saving ? 0 : -1}
+                                aria-label={`Редактировать задачу ${task.id} на Ганте`}
+                                aria-disabled={!canEdit || saving}
                                 style={{
                                   left,
                                   width: barWidth,
                                   background: colors[task.status],
+                                  color: ["разработка", "оценка", "ревью"].includes(task.status) ? "#fff" : "#15130f",
                                 }}
                                 onPointerDown={(e) =>
                                   startDrag(e, task, "move")
                                 }
                                 onPointerMove={moveDrag}
-                                onPointerUp={() => {
+                                onPointerUp={(e) => {
+                                  const d = drag.current;
+                                  if (d) suppressBarClick.current = d.mode !== "move" || d.moved || Math.abs(e.clientX - d.x) >= 4;
                                   drag.current = null;
                                 }}
                                 onPointerCancel={() => {
                                   drag.current = null;
+                                  suppressBarClick.current = true;
                                   setPending(null);
                                 }}
-                                onDoubleClick={() => openTask(task)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (suppressBarClick.current) { suppressBarClick.current = false; return; }
+                                  if (canEdit && !saving) openTask(task);
+                                }}
+                                onKeyDown={(e) => {
+                                  if ((e.key === "Enter" || e.key === " ") && canEdit && !saving) {
+                                    e.preventDefault();
+                                    openTask(task);
+                                  }
+                                }}
                                 title={`${task.title}: ${start} → ${end}`}
                               >
+                                <span className="gantt-bar-label">{task.title}</span>
                                 <span
                                   className="bar-handle left"
                                   onPointerDown={(e) =>
