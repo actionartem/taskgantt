@@ -1,6 +1,7 @@
 "use client";
 import { memo, useCallback, useEffect, useState, useRef } from "react";
 import { ApprovedDocument, DownloadLink } from "./approved-document";
+import { TaskHistory } from "./task-history";
 import { request } from "@/lib/api";
 import { useApp } from "@/contexts/app-context";
 import {
@@ -15,45 +16,11 @@ import {
   displayDays,
   type TaskDocument,
   type AttentionItem,
-  type TrackerEvent,
   type StageMetrics,
   type JiraSnapshot,
 } from "@/lib/tracker-types";
 const errorText = (e: unknown) =>
   e instanceof Error ? e.message : "Не удалось загрузить данные";
-const sourceLabel = (s: string) =>
-  ({
-    simpletracker: "SimpleTracker",
-    jira: "Jira",
-    "mail-agent": "Агент · почта",
-    legacy: "Прежний журнал",
-  })[s] || s;
-const fieldLabel = (s: string) =>
-  ({
-    status: "Статус",
-    assignee: "Исполнитель Jira",
-    assignee_user_id: "Ответственный",
-    title: "Название",
-    description: "Описание",
-    priority: "Приоритет",
-    link_url: "Ссылка",
-    email_thread: "Переписка",
-    document_history: "Прежняя история документов",
-    start_at: "Начало",
-    due_at: "Окончание",
-    tags: "Теги",
-    approved_hours: "Согласованные часы",
-    deadline_confirmed: "Срок подтверждён",
-    next_action_at: "Срок действия",
-    next_action_text: "Следующее действие",
-    reply_due_at: "Срок ответа",
-    waiting_for: "Чей ответ ждём",
-    document: "Документ",
-    is_current: "Актуальность",
-    approved_at: "Согласовано",
-    approval_evidence: "Основание согласования",
-    jira_link: "Связь с Jira",
-  })[s] || s;
 export function DocumentsView({
   onOpenTask,
 }: {
@@ -330,162 +297,6 @@ export function AttentionView({
         </DialogContent>
       </Dialog>
     </section>
-  );
-}
-
-export function TaskHistory({
-  taskId,
-  open,
-  onClose,
-}: {
-  taskId: number;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const [events, setEvents] = useState<TrackerEvent[]>([]),
-    [error, setError] = useState(""),
-    [filter, setFilter] = useState("all"),
-    [loading, setLoading] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    let live = true;
-    setLoading(true);
-    request<TrackerEvent[]>(`/tasks/${taskId}/events`)
-      .then((e) => {
-        if (live) {
-          setEvents(e);
-          setError("");
-        }
-      })
-      .catch((e) => {
-        if (live) setError(errorText(e));
-      })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [taskId, open]);
-  const { settings } = useApp();
-  const value = (field: string, v: unknown) =>
-    v == null || v === ""
-      ? "—"
-      : field === "assignee_user_id"
-        ? settings.executors.find((e) => e.id === Number(v))?.name || `#${v}`
-        : field === "priority"
-          ? { low: "низкий", medium: "средний", high: "высокий" }[String(v)] ||
-            String(v)
-          : ["start_at", "due_at"].includes(field)
-            ? new Date(String(v)).toLocaleDateString("ru-RU", {
-                timeZone: "Europe/Moscow",
-              })
-            : ["next_action_at", "reply_due_at", "approved_at"].includes(field)
-              ? displayTime(String(v))
-              : Array.isArray(v)
-                ? v.join(", ") || "—"
-                : typeof v === "boolean"
-                  ? v
-                    ? "да"
-                    : "нет"
-                  : String(v);
-  const visible = events.filter(e => !e.changes.spent_hours || Object.keys(e.changes).some(k => k != "spent_hours")).filter(
-    (e) =>
-      filter === "all" ||
-      (filter === "status"
-        ? !!e.changes.status
-        : filter === "assignee"
-          ? !!(e.changes.assignee || e.changes.assignee_user_id)
-          : e.type.startsWith("document.")),
-  );
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) onClose();
-      }}
-    >
-      <DialogContent className="history-modal">
-        <DialogHeader>
-          <DialogTitle>История изменений · #{taskId}</DialogTitle>
-          <DialogDescription className="sr-only">События задачи</DialogDescription>
-        </DialogHeader>
-        <div className="section-tools">
-          {[
-            ["all", "Все"],
-            ["status", "Статусы"],
-            ["assignee", "Исполнители"],
-            ["documents", "Документы"],
-          ].map(([k, v]) => (
-            <button
-              type="button"
-              key={k}
-              aria-pressed={filter === k}
-              onClick={() => setFilter(k)}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-        {error && <p role="alert">{error}</p>}
-        <div className="event-list">
-          {loading ? (
-            <p>Загружаю историю…</p>
-          ) : visible.length ? (
-            visible.map((e) => (
-              <article className="event-row" key={e.id}>
-                <small>
-                  {sourceLabel(e.source)} ·{" "}
-                  {e.occurred_at
-                    ? displayTime(e.occurred_at)
-                    : "Точное время действия неизвестно"}
-                </small>
-                <b>
-                  {e.type === "task.paused"
-                    ? "Пауза · "
-                    : e.type === "task.resumed"
-                      ? "Возобновление · "
-                      : ""}
-                  {e.summary}
-                </b>
-                {e.actor_name && (
-                  <span>
-                    {e.actor_name}
-                    {e.source !== "simpletracker"
-                      ? " · по сведениям источника"
-                      : ""}
-                  </span>
-                )}
-                {Object.entries(e.changes).filter(([k]) => k !== "spent_hours").map(([k, v]) => (
-                  <p key={k}>
-                    {fieldLabel(k)}: <span>{value(k, v.old)}</span> →{" "}
-                    <strong>{value(k, v.new)}</strong>
-                  </p>
-                ))}
-                <small>
-                  Получено {displayTime(e.received_at)} ·{" "}
-                  {e.recorder.startsWith("user:")
-                    ? "записано пользователем"
-                    : e.recorder === "legacy"
-                      ? "автор не зафиксирован"
-                      : `добавлено: ${e.recorder}`}
-                </small>
-                {e.corrects_event_id && (
-                  <small>Исправляет событие #{e.corrects_event_id}</small>
-                )}
-                {e.source_url && (
-                  <a href={e.source_url} target="_blank" rel="noreferrer">
-                    Источник ↗
-                  </a>
-                )}
-              </article>
-            ))
-          ) : (
-            <p>Событий этого типа пока нет.</p>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 

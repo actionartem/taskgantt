@@ -16,6 +16,8 @@ import {
 } from "@/lib/types";
 import { generateTaskId, validateTaskId } from "@/lib/task-utils";
 import { TaskDetails } from "./tracker-views";
+import { nextAction } from "@/lib/tracker-presentation";
+import { displayTime } from "@/lib/tracker-types";
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 const empty = (): Task => ({
   id: generateTaskId(),
@@ -40,13 +42,6 @@ const empty = (): Task => ({
 });
 const normalize = (v: unknown) =>
   v == null || v === "" ? null : Array.isArray(v) ? [...v].sort() : v;
-const localDateTime = (value?: string | null) => {
-  if (!value) return "";
-  const d = new Date(value);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-};
 export function TaskForm({
   task,
   open,
@@ -86,6 +81,8 @@ export function TaskForm({
     openedId.current = null;
     onClose();
   };
+  const actionText = nextAction(draft);
+  const actionDate = draft.nextActionAt || draft.replyDueAt;
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
@@ -230,18 +227,10 @@ export function TaskForm({
                 <input
                   type="date"
                   value={draft.endDate || ""}
-                  onChange={(e) => set("endDate", e.target.value || null)}
+                  onChange={(e) => { set("endDate", e.target.value || null); if (!e.target.value) set("deadlineConfirmed", false); }}
                 />
               </label>
             </div>
-            <label className="check-label">
-              <input
-                type="checkbox"
-                checked={!!draft.deadlineConfirmed}
-                onChange={(e) => set("deadlineConfirmed", e.target.checked)}
-              />{" "}
-              Это подтверждённый обещанный срок
-            </label>
             <div className="form-grid">
               <label>
                 Согласовано, ч
@@ -285,60 +274,6 @@ export function TaskForm({
                 onChange={(e) => set("emailThread", e.target.value)}
               />
             </label>
-            <label>
-              Прежняя текстовая история документов
-              <textarea
-                rows={3}
-                value={draft.documentHistory || ""}
-                onChange={(e) => set("documentHistory", e.target.value)}
-              />
-            </label>
-            <div className="form-grid">
-              <label>
-                Следующее действие
-                <input
-                  value={draft.nextActionText || ""}
-                  onChange={(e) => set("nextActionText", e.target.value)}
-                />
-              </label>
-              <label>
-                Срок действия <small>(часовой пояс устройства)</small>
-                <input
-                  type="datetime-local"
-                  value={localDateTime(draft.nextActionAt)}
-                  onChange={(e) =>
-                    set(
-                      "nextActionAt",
-                      e.target.value
-                        ? new Date(e.target.value).toISOString()
-                        : null,
-                    )
-                  }
-                />
-              </label>
-              <label>
-                Чей ответ ждём
-                <input
-                  value={draft.waitingFor || ""}
-                  onChange={(e) => set("waitingFor", e.target.value)}
-                />
-              </label>
-              <label>
-                Срок ответа <small>(часовой пояс устройства)</small>
-                <input
-                  type="datetime-local"
-                  value={localDateTime(draft.replyDueAt)}
-                  onChange={(e) =>
-                    set(
-                      "replyDueAt",
-                      e.target.value
-                        ? new Date(e.target.value).toISOString()
-                        : null,
-                    )
-                  }
-                />
-              </label>
-            </div>
             <div>
               <span className="field-label">Теги</span>
               <div className="tag-buttons">
@@ -400,6 +335,7 @@ export function TaskForm({
             </button>
           </div>
         </form>
+        {actionText && <div className="automatic-next-action"><span>Следующее действие</span><b>{actionText}</b>{actionDate && <small>{displayTime(actionDate)}</small>}</div>}
         {task && <TaskDetails key={task.id} taskId={task.id} />}
         <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
           <AlertDialogContent>

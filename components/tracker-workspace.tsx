@@ -16,17 +16,9 @@ import { HoursView } from "./hours-view";
 import { buildGanttCalendar } from "@/lib/gantt-calendar";
 import { GanttCalendarHeader } from "./gantt-calendar-header";
 import { russianCalendarDay } from "@/lib/russian-calendar";
+import { STATUS_TONES } from "@/lib/tracker-presentation";
 
-const colors: Record<TaskStatus, string> = {
-  "не в работе": "#8B8579",
-  "в аналитике": "#3E7FB0",
-  "на согласовании": "#B07A0A",
-  оценка: "#8A64B0",
-  "готова к разработке": "#1F8F84",
-  разработка: "#2B2723",
-  ревью: "#B03F86",
-  завершена: "#4C8A3C",
-};
+const colors = STATUS_TONES;
 const day = (s: string) =>
   Math.floor(new Date(s.slice(0, 10) + "T00:00:00Z").getTime() / 86400000);
 const ymd = (n: number) => new Date(n * 86400000).toISOString().slice(0, 10);
@@ -312,10 +304,10 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
       <header className="tracker-header">
         <div className="brand-cat">
           <img
-            src="/favicon_cat_64.png"
+            src="/favicon_cat_128.png"
             alt="Кот-клоун SimpleTracker"
-            width={52}
-            height={52}
+            width={64}
+            height={64}
           />
         </div>
         <div className="brand-name">
@@ -517,7 +509,6 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
               >
                 Сегодня
               </button>
-              <span className="gantt-only calendar-legend" title="Федеральный производственный календарь, пятидневная неделя. Переносы проверены для 2024–2027 годов.">Выходные РФ <i aria-hidden="true" /></span>
               {filterCount > 0 && (
                 <button
                   onClick={() => {
@@ -713,7 +704,7 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
                                   left,
                                   width: barWidth,
                                   background: colors[task.status],
-                                  color: ["разработка", "оценка", "ревью"].includes(task.status) ? "#fff" : "#15130f",
+                                  color: task.status === "разработка" ? "#fff" : "#24231f",
                                 }}
                                 onPointerDown={(e) =>
                                   startDrag(e, task, "move")

@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { request } from "@/lib/api";
 import { useApp } from "@/contexts/app-context";
 import type { Task } from "@/lib/types";
+import { inHoursPeriod } from "@/lib/tracker-presentation";
 
 type Fact = { task_id: string; completed_on: string | null; planned_release_on: string | null };
 type Row = { task: Task; date: string | null; done: boolean };
@@ -19,7 +20,7 @@ const summary = (rows: Row[]) => ({
 export function HoursView({ tasks, onOpenTask }: { tasks: Task[]; onOpenTask: (t: Task) => void }) {
   const { lastRefresh } = useApp();
   const currentYear = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Moscow", year: "numeric" }).format(new Date());
-  const [year, setYear] = useState(currentYear);
+  const [year, setYear] = useState("all");
   const [facts, setFacts] = useState<Fact[] | null>(null), [error, setError] = useState("");
   const [retry, setRetry] = useState(0), [loading, setLoading] = useState(true);
   const [unit, setUnit] = useState<"hours" | "count">("hours");
@@ -40,14 +41,14 @@ export function HoursView({ tasks, onOpenTask }: { tasks: Task[]; onOpenTask: (t
       return { task, done, date: (done ? fact?.completed_on : fact?.planned_release_on) || null };
     });
   }, [tasks, facts]);
-  const years = [...new Set([currentYear, ...(year === "undated" ? [] : [year]), ...rows.flatMap(r => r.date ? [r.date.slice(0, 4)] : [])])].sort().reverse();
-  const undated = rows.filter(r => !r.date);
-  const annual = rows.filter(r => year === "undated" ? !r.date : r.date?.startsWith(year + "-"));
+  const years = [...new Set([currentYear, ...(year === "all" ? [] : [year]), ...rows.flatMap(r => r.date ? [r.date.slice(0, 4)] : [])])].sort().reverse();
+  const annual = rows.filter(r => inHoursPeriod(r.date, year));
   const done = summary(annual.filter(r => r.done)), planned = summary(annual.filter(r => !r.done));
-  const monthly = months.map((label, i) => {
-    const group = annual.filter(r => r.date && Number(r.date.slice(5, 7)) === i + 1);
-    return { label, done: summary(group.filter(r => r.done)), planned: summary(group.filter(r => !r.done)) };
-  });
+  const periods = year === "all" ? [
+    ...[...new Set(rows.flatMap(r => r.date ? [r.date.slice(0, 4)] : []))].sort().map(y => ({ label: y, rows: rows.filter(r => r.date?.startsWith(y + "-")) })),
+    ...(rows.some(r => !r.date) ? [{ label: "Без даты", rows: rows.filter(r => !r.date) }] : []),
+  ] : months.map((label, i) => ({ label, rows: annual.filter(r => r.date && Number(r.date.slice(5, 7)) === i + 1) }));
+  const monthly = periods.map(p => ({ label: p.label, done: summary(p.rows.filter(r => r.done)), planned: summary(p.rows.filter(r => !r.done)) }));
   const max = Math.max(1, ...monthly.flatMap(m => [m.done[unit], m.planned[unit]]));
   const tableRows = [...annual].sort((a, b) => {
     const value = (r: Row) => sort === "hours" ? r.task.approvedHours ?? null : sort === "id" ? r.task.id : r.task[sort];
@@ -64,9 +65,9 @@ export function HoursView({ tasks, onOpenTask }: { tasks: Task[]; onOpenTask: (t
   return <section className="hours-view" aria-label="Статистика согласованных часов">
     <div className="hours-toolbar">
       <div><h2>Работа в цифрах</h2><span className="hours-loading" role="status">{loading ? "Обновление…" : ""}</span></div>
-      <label>Календарный год <select aria-label="Календарный год" value={year} onChange={e => setYear(e.target.value)}>
+      <label>Период <select aria-label="Период" value={year} onChange={e => setYear(e.target.value)}>
+        <option value="all">За всё время</option>
         {years.map(y => <option key={y} value={y}>{y}</option>)}
-        <option value="undated">Без даты ({undated.length})</option>
       </select></label>
     </div>
     {error && <div role="alert" className="tracker-error">Не удалось обновить статистику. {error} <button onClick={() => setRetry(n => n + 1)}>Повторить</button></div>}
@@ -80,17 +81,16 @@ export function HoursView({ tasks, onOpenTask }: { tasks: Task[]; onOpenTask: (t
 
         </div>
       </div>
-      {year !== "undated" && <div className="hours-chart-section">
-        <div className="hours-chart-heading"><h2>По месяцам</h2><div className="hours-switch" aria-label="Показатель графика"><button aria-pressed={unit === "hours"} onClick={() => setUnit("hours")}>Часы</button><button aria-pressed={unit === "count"} onClick={() => setUnit("count")}>Задачи</button></div></div>
+      <div className="hours-chart-section">
+        <div className="hours-chart-heading"><h2>{year === "all" ? "По годам" : "По месяцам"}</h2><div className="hours-switch" aria-label="Показатель графика"><button aria-pressed={unit === "hours"} onClick={() => setUnit("hours")}>Часы</button><button aria-pressed={unit === "count"} onClick={() => setUnit("count")}>Задачи</button></div></div>
         <div className="hours-chart-legend"><span className="completed">Завершено по факту</span><span className="planned">Не завершено · план релиза</span><small>Шкала: 0–{number(max)} {unit === "hours" ? "ч" : "задач"}</small></div>
-        <div className="hours-chart-scroll"><div className="hours-chart" role="img" aria-label={`Распределение ${unit === "hours" ? "согласованных часов" : "задач"} по месяцам ${year}`}>
+        <div className="hours-chart-scroll"><div className="hours-chart" style={{ gridTemplateColumns: `repeat(${Math.max(1, monthly.length)}, 1fr)`, minWidth: year === "all" ? Math.max(260, monthly.length * 90) : 660 }} role="img" aria-label={`Распределение ${unit === "hours" ? "согласованных часов" : "задач"} ${year === "all" ? "за всё время" : `за ${year} год`}`}>
           {monthly.map(m => <div className="hours-month" key={m.label} aria-label={`${m.label}: завершено ${number(m.done[unit])}, не завершено ${number(m.planned[unit])}`}>
             <div className="hours-month-bars">{(["done", "planned"] as const).map(k => <div className={`hours-bar ${k}`} key={k} style={{ height: `${m[k][unit] / max * 100}%` }} title={`${m.label} · ${k === "done" ? "Завершено" : "План релиза"}: ${number(m[k].hours)} ч, ${tasksLabel(m[k].count)}${m[k].unknown ? `; без оценки: ${m[k].unknown}` : ""}`}><span>{m[k][unit] > 0 ? number(m[k][unit]) : unit === "hours" && m[k].unknown > 0 ? "?" : ""}</span></div>)}</div><b>{m.label}</b>
           </div>)}
         </div></div>
-        {!annual.length && <p className="muted">В этом году задач нет.</p>}
-      </div>}
-      {undated.length > 0 && year !== "undated" && <div className="hours-undated"><span>Без даты: {tasksLabel(undated.length)}</span><button onClick={() => setYear("undated")}>Посмотреть</button></div>}
+        {!annual.length && <p className="muted">Задач за этот период нет.</p>}
+      </div>
       <div className="hours-table-heading"><h2>Задачи · {tableRows.length}</h2></div>
       <div className="hours-table-scroll"><table><thead><tr>{columns.map(([key, label]) => <th key={key} aria-sort={sort === key ? direction === "asc" ? "ascending" : "descending" : "none"}><button onClick={() => sortBy(key)}>{label}{sort === key ? direction === "desc" ? <ArrowDown size={14} /> : <ArrowUp size={14} /> : <ArrowUpDown size={13} />}</button></th>)}<th /></tr></thead>
         <tbody>{tableRows.map(({ task, done }) => <tr key={task.id}><td>{task.id}</td><td><button onClick={() => onOpenTask(task)}>{task.title}</button></td><td><span className={`hours-task-status ${done ? "completed" : ""}`}>{task.status}</span></td><td className="hours-value">{task.approvedHours == null ? <span className="muted">Нет оценки</span> : number(task.approvedHours)}</td><td><button aria-label={`Открыть карточку ${task.id}`} onClick={() => onOpenTask(task)}>↗</button></td></tr>)}</tbody>
