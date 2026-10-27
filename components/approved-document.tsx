@@ -46,11 +46,11 @@ export function ApprovedDocument({ taskId }: { taskId: number }) {
     finally { setBusy(false); }
   };
   return <details open className="approved-document"><summary>Согласованный документ</summary>
-    <div className="approved-document-content">{loading ? <p role="status">Загрузка…</p> : doc ? <article className="document-compact"><b>{doc.title}</b><small>Согласован {new Date(doc.approved_at!).toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })}</small><DownloadLink doc={doc} /></article> : <p className="muted">Документ не добавлен</p>}</div>
+    <div className="approved-document-content">{loading ? <p role="status">Загрузка…</p> : doc ? <article className="document-compact"><b>{doc.title}</b><small>{doc.approved_at ? `Согласован ${new Date(doc.approved_at).toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })}` : "Согласован; дата согласования неизвестна"}</small><DownloadLink doc={doc} /></article> : <p className="muted">Документ не добавлен</p>}</div>
     {error && <p role="alert" className="tracker-error">{error}</p>}
     {!upload && <button type="button" onClick={() => setUpload(true)}>{doc ? "Заменить документ" : "Добавить документ"}</button>}
     {upload && <fieldset disabled={busy} className="document-upload form-grid">
-      <label>Файл<input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg" onChange={e => { const f = e.target.files?.[0] || null; setFile(f); if (f && !title) setTitle(f.name); resetKey(); }} /></label>
+      <label>Файл<input type="file" accept=".pdf,.doc,.docx,.docm,.xls,.xlsx,.txt,.png,.jpg,.jpeg" onChange={e => { const f = e.target.files?.[0] || null; setFile(f); if (f && !title) setTitle(f.name); resetKey(); }} /></label>
       <label>Ссылка<input type="url" value={link} onChange={e => { setLink(e.target.value); resetKey(); }} /></label>
       <label>Название<input value={title} onChange={e => { setTitle(e.target.value); resetKey(); }} /></label>
       <label>Дата согласования<input type="date" value={approvedDate} onChange={e => { setApprovedDate(e.target.value); resetKey(); }} /></label>
