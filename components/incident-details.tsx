@@ -2,16 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Info, LoaderCircle, RefreshCw, ArrowRight, Check } from "lucide-react"
-import Markdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import rehypeRaw from "rehype-raw"
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize"
+import { ItsmAttachmentList, ItsmRichText as RichText, remainingAttachments } from "@/components/itsm-attachments"
+import { attachmentNotePreview, normalizeAttachments } from "@/lib/itsm-attachments"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { request } from "@/lib/api"
 import { INCIDENT_PRIORITIES, incidentDateTime, type Incident } from "@/lib/incidents"
 import { entityName, httpLink, itsmLabel, ITSM_STATUSES, type ItsmDetails, type ItsmRecord, type ItsmSection } from "@/lib/itsm"
 
-const schema = { ...defaultSchema, tagNames: [...(defaultSchema.tagNames || []), "details", "summary"], attributes: { ...defaultSchema.attributes, details: ["open"] } }
 const asObject = (value: unknown): ItsmRecord => value && typeof value === "object" && !Array.isArray(value) ? value as ItsmRecord : {}
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Не удалось загрузить подробности"
 const dateText = (value: unknown) => typeof value === "string" && Number.isFinite(Date.parse(value)) ? incidentDateTime(value) : "Не указано"
@@ -21,17 +18,11 @@ function Fold({ title, children, initiallyOpen = false, className = "" }: { titl
   const [open, setOpen] = useState(initiallyOpen)
   return <details className={className} open={open} onToggle={event => setOpen(event.currentTarget.open)}><summary>{title}</summary>{open && children}</details>
 }
-function RichText({ text }: { text: unknown }) {
-  if (typeof text !== "string" || !text) return <p className="itsm-empty">Текст не указан</p>
-  return <div className="itsm-rich-text"><Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, schema]]} components={{
-    a: ({ href, children }) => httpLink(href) ? <a href={httpLink(href)} target="_blank" rel="noopener noreferrer">{children}</a> : <span>{children}</span>,
-    img: ({ src, alt }) => httpLink(src) ? <a href={httpLink(src)} target="_blank" rel="noopener noreferrer">{alt || "Открыть изображение"}</a> : <span>{alt || "Изображение"}</span>,
-  }}>{text}</Markdown></div>
-}
 function Value({ value, field = "" }: { value: unknown; field?: string }) {
   if (value == null || value === "") return <span className="itsm-empty">Не указано</span>
   if (typeof value === "boolean") return <>{value ? "Да" : "Нет"}</>
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value))) return <time dateTime={value}>{dateText(value)}</time>
+  if (Array.isArray(value) && ["attachments", "note_attachments"].includes(field)) return <ItsmAttachmentList value={value} />
   if (Array.isArray(value)) return value.length ? <Fold title={`Элементов: ${value.length}`} className="itsm-nested"><div className="itsm-object-list">{value.map((item, index) => <div key={index}><Value value={item} /></div>)}</div></Fold> : <span className="itsm-empty">Нет</span>
   if (typeof value === "object") {
     const entries = Object.entries(value as ItsmRecord)
@@ -45,9 +36,11 @@ function Fields({ data }: { data: ItsmRecord }) {
   return <dl className="itsm-fields">{Object.entries(data).map(([key, value]) => <div key={key}><dt title={key}>{itsmLabel(key)}</dt><dd><Value value={value} field={key} /></dd></div>)}</dl>
 }
 function Note({ note, initiallyOpen = false }: { note: ItsmRecord; initiallyOpen?: boolean }) {
-  return <Fold initiallyOpen={initiallyOpen} className="itsm-note" title={<><span className="itsm-note-author">{entityName(note.person)}{note.internal === true && <small>Внутренняя</small>}</span><time>{dateText(note.created_at)}</time><span className="itsm-note-preview">{String(note.text || "Заметка без текста").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").slice(0, 160)}</span></>}>
-    <RichText text={note.text} />
-    {Array.isArray(note.attachments) && note.attachments.length > 0 && <div className="itsm-note-files"><h4>Вложения</h4><Value value={note.attachments} /></div>}
+  const inline = remainingAttachments(note.text, note.attachments)
+  const hasOtherAttachments = normalizeAttachments(note.attachments).some(file => !inline.has(file.id))
+  return <Fold initiallyOpen={initiallyOpen} className="itsm-note" title={<><span className="itsm-note-author">{entityName(note.person)}{note.internal === true && <small>Внутренняя</small>}</span><time>{dateText(note.created_at)}</time><span className="itsm-note-preview">{attachmentNotePreview(note.text)}</span></>}>
+    <RichText text={note.text} attachmentData={note.attachments} />
+    {hasOtherAttachments && <div className="itsm-note-files"><h4>Вложения</h4><ItsmAttachmentList value={note.attachments} omit={inline} /></div>}
     <Fold title="Все поля записи" className="itsm-nested"><Fields data={Object.fromEntries(Object.entries(note).filter(([key]) => !["text", "attachments"].includes(key)))} /></Fold>
   </Fold>
 }
@@ -122,7 +115,7 @@ export function IncidentDetails({ incident, canEdit, onClose, onSaved }: { incid
           {(tab === "notes" ? shownNotes : shownHistory).length > limit && <button className="itsm-button" onClick={() => setLimit(value => value + 40)}>Показать ещё</button>}
         </>}
         {tab === "fields" && <><input className="itsm-search" aria-label="Поиск по полям" placeholder="Найти поле или значение" value={search} onChange={event => setSearch(event.target.value)} /><h3 className="itsm-section-title">Все поля карточки</h3><Fields data={Object.fromEntries(Object.entries(record).filter(([key, value]) => match({ [itsmLabel(key)]: value, key })))} />
-          {Object.entries(sections).filter(([key]) => !["notes", "audit"].includes(key)).map(([key, section]) => <Fold key={key} className="itsm-related" title={<>{section.title}<small>{section.items.length}{!section.complete ? " · не полностью" : ""}</small></>}><SectionNotice section={section} />{section.items.filter(match).length ? section.items.filter(match).map((item, index) => <Fold key={String(item.id ?? index)} title={entityName(item)} className="itsm-nested"><Fields data={asObject(item)} /></Fold>) : <p className="itsm-empty">Записей нет</p>}</Fold>)}
+          {Object.entries(sections).filter(([key]) => !["notes", "audit"].includes(key)).map(([key, section]) => <Fold key={key} className="itsm-related" title={<>{section.title}<small>{section.items.length}{!section.complete ? " · не полностью" : ""}</small></>}><SectionNotice section={section} />{section.items.filter(match).length ? key === "note_attachments" ? <ItsmAttachmentList value={section.items.filter(match)} /> : section.items.filter(match).map((item, index) => <Fold key={String(item.id ?? index)} title={entityName(item)} className="itsm-nested"><Fields data={asObject(item)} /></Fold>) : <p className="itsm-empty">Записей нет</p>}</Fold>)}
         </>}
       </>}
     </div>

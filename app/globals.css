@@ -1820,6 +1820,37 @@ button[aria-pressed="true"]:not(.status-chip) {
 .itsm-rich-text summary { cursor: pointer; }
 .itsm-scroll a { text-decoration: underline; text-underline-offset: 3px; }
 .itsm-note-files h4 { margin-bottom: 7px; font-size: 12px; font-weight: 650; }
+.itsm-attachments { display: grid; gap: 12px; min-width: 0; }
+.itsm-image-card { display: block; min-width: 0; max-width: 100%; margin: 12px 0; border: 1px solid var(--st-line); border-radius: 6px; overflow: hidden; background: var(--st-surface); }
+.itsm-rich-text .itsm-image-card { white-space: normal; }
+.itsm-image-preview { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 90px; padding: 12px; background: var(--st-surface2); cursor: zoom-in; border: 0; }
+.itsm-image-preview img { display: block; max-width: 100%; max-height: 460px; height: auto; object-fit: contain; }
+.itsm-image-zoom { position: absolute; right: 10px; bottom: 10px; padding: 6px; border: 1px solid var(--st-line); border-radius: 5px; background: var(--st-surface); opacity: .9; }
+.itsm-file-caption, .itsm-file-heading { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px 12px; font-size: 12px; }
+.itsm-file-caption > a { min-width: 0; overflow-wrap: anywhere; }
+.itsm-file-caption > small, .itsm-file-heading > small { margin-left: auto; flex-shrink: 0; color: var(--st-muted); font-size: 11px; white-space: nowrap; }
+.itsm-file-card { min-width: 0; border: 1px solid var(--st-line); border-radius: 6px; background: var(--st-surface); }
+.itsm-file-heading > svg { flex-shrink: 0; color: var(--st-muted); }
+.itsm-file-name { display: inline-flex; align-items: center; gap: 9px; min-width: 0; text-align: left; font-size: 12px; overflow-wrap: anywhere; }
+.itsm-file-name > svg { flex-shrink: 0; }
+.itsm-file-name > .is-open { transform: rotate(180deg); }
+.itsm-file-download { display: inline-flex; flex-shrink: 0; position: relative; }
+.itsm-file-action { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--st-line); border-radius: 5px; background: var(--st-surface); }
+.itsm-file-action:disabled { opacity: .5; cursor: default; }
+.itsm-file-error { display: block; color: #943e37; font-size: 12px; padding: 10px; }
+.itsm-file-download > .itsm-file-error { position: absolute; top: 100%; right: 0; z-index: 5; width: 250px; max-width: 70vw; background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 5px; box-shadow: 0 4px 15px #0002; }
+.itsm-text-preview { padding: 12px; border-top: 1px solid var(--st-line); font-size: 12px; }
+.itsm-text-preview > span { display: flex; align-items: center; gap: 7px; }
+.itsm-text-preview pre { max-height: 380px; margin: 0 0 10px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 var(--font-jbm), monospace; }
+.itsm-text-preview > p { margin: 6px 0 10px; color: var(--st-muted); font-size: 11px; }
+.itsm-related > .itsm-attachments { margin: 12px 16px; }
+.itsm-image-dialog { display: flex !important; flex-direction: column; gap: 12px; width: calc(100vw - 32px) !important; max-width: 1400px !important; max-height: calc(100dvh - 32px); padding: 18px; color: var(--st-ink); background: var(--st-surface); animation: none !important; }
+.itsm-image-dialog [data-slot="dialog-header"] { text-align: left; padding-right: 30px; }
+.itsm-image-dialog [data-slot="dialog-title"] { font-size: 15px; overflow-wrap: anywhere; }
+.itsm-image-full { min-height: 0; overflow: auto; display: flex; justify-content: center; }
+.itsm-image-full img { max-width: 100%; max-height: calc(100dvh - 180px); object-fit: contain; }
+.itsm-image-toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 14px; font-size: 12px; }
+.itsm-image-toolbar > a { display: inline-flex; align-items: center; gap: 6px; }
 .itsm-search { width: 100%; border: 1px solid var(--st-line); padding: 10px 12px; min-height: 39px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; background: var(--st-surface); }
 .itsm-change-table { overflow: auto; margin: 4px 15px 15px; }
 .itsm-change-table table { width: 100%; min-width: 440px; text-align: left; font-size: 12px; border-collapse: collapse; }
