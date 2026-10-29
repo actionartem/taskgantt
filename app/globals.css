@@ -1669,9 +1669,9 @@ button[aria-pressed="true"]:not(.status-chip) {
 .incidents-frame button.incident-number:hover { text-decoration: underline; }
 .incidents-frame button.incident-edit { border: 0; background: transparent; padding: 0; width: 30px; min-height: 30px; }
 .incident-priority { font-size: 11px; font-weight: 600; white-space: nowrap; padding: 3px 7px; border-radius: 4px; }
-.incident-priority.priority-high { color: #943e37; background: #f5e3df; }
-.incident-priority.priority-medium { color: #785820; background: #f1e8d1; }
-.incident-priority.priority-low { color: #4e695c; background: #e4ece5; }
+.incidents-frame .incident-priority.priority-high { color: #943e37; background: #f5e3df; }
+.incidents-frame .incident-priority.priority-medium { color: #785820; background: #f1e8d1; }
+.incidents-frame .incident-priority.priority-low { color: #4e695c; background: #e4ece5; }
 .incident-check { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; white-space: nowrap; }
 .incident-check input { width: 16px; height: 16px; accent-color: var(--st-accent); }
 .incidents-empty { padding: 36px 20px; color: var(--st-muted); font-size: 14px; text-align: center; }
