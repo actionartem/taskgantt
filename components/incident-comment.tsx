@@ -56,7 +56,7 @@ export function IncidentComment({ incident, canEdit, onSaved, onEditingChange }:
   if (!editing) return canEdit
     ? <button type="button" className="incident-comment-trigger" aria-label={`Комментарий ${incident.number}`} onClick={start}><span>{incident.comment || "—"}</span></button>
     : <span className="incident-comment-readonly">{incident.comment || "—"}</span>
-  return <div className="incident-comment-editor" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !error && !conflict) void save() }}>
+  return <div className="incident-comment-editor" data-incident-control onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null) && !error && !conflict) void save() }}>
     <textarea ref={textarea} autoFocus aria-label={`Комментарий ${incident.number}`} maxLength={10000} value={draft} readOnly={saving} rows={3}
       onChange={event => { setDraft(event.target.value); setError("") }}
       onKeyDown={event => {

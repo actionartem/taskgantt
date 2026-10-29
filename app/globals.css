@@ -1729,6 +1729,27 @@ button[aria-pressed="true"]:not(.status-chip) {
 .incidents-table-panel > .incidents-table-scroll { flex: 0 1 auto; }
 .incidents-table { min-width: 1100px; }
 .incident-number-actions, .incident-row-actions { display: flex; align-items: center; gap: 6px; }
+.incidents-frame a.incident-number, .incidents-frame span.incident-number { min-height: 30px; display: inline-flex; align-items: center; font-family: var(--font-jbm), monospace; font-size: 12px; white-space: nowrap; }
+.incidents-frame a.incident-number { text-decoration: underline; text-underline-offset: 3px; }
+.incidents-frame button.incident-close-button { min-height: 26px; padding: 3px 7px; border: 1px solid var(--st-line); border-radius: 3px; background: transparent; color: var(--st-ink); font-size: 11px; font-weight: 500; }
+.incident-clickable-row { cursor: pointer; }
+.incident-clickable-row:focus-visible { outline: 1px solid var(--st-ink); outline-offset: -1px; }
+.incident-inline-field { display: inline-block; max-width: 100%; cursor: default; }
+.incidents-frame button.incident-priority-trigger { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; min-height: 27px; border: 1px solid transparent; border-radius: 4px; font-size: 11px; }
+.incidents-frame button.incident-priority-trigger:hover { border-color: var(--st-line); }
+.incidents-frame button.incident-inline-trigger { min-height: 30px; padding: 3px 4px; border: 1px solid transparent; border-radius: 4px; background: transparent; font-size: 12px; font-weight: 400; }
+.incidents-frame button.incident-inline-trigger:hover { border-color: var(--st-line); background: var(--st-surface); }
+.incident-check-box { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border: 1px solid var(--st-muted); border-radius: 2px; background: var(--st-surface); }
+.incident-check-box.is-checked { border-color: var(--st-accent); background: var(--st-accent); }
+.incident-timing-popover { width: min(300px, calc(100vw - 24px)); max-height: var(--radix-popover-content-available-height); overflow-y: auto; padding: 14px; color: var(--st-ink); background: var(--st-surface); border: 1px solid var(--st-line); border-radius: 6px; box-shadow: 0 5px 20px #0002; }
+.incident-timing-popover fieldset { display: grid; gap: 12px; border: 0; padding: 0; min-width: 0; }
+.incident-timing-popover label:not(.incident-check) { display: grid; gap: 6px; font-size: 12px; font-weight: 600; }
+.incident-timing-popover input[type="datetime-local"] { width: 100%; min-width: 0; min-height: 36px; padding: 6px 8px; border: 1px solid var(--st-line); border-radius: 4px; color: var(--st-ink); background: var(--st-surface); font-size: 13px; }
+.incident-inline-actions { display: flex; gap: 7px; justify-content: flex-end; margin-top: 14px; }
+.incident-inline-actions button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; min-height: 32px; font-size: 12px; border: 1px solid var(--st-line); border-radius: 4px; }
+.incident-inline-actions button[type="submit"] { background: var(--st-accent); border-color: var(--st-accent); }
+.incident-priority-menu { background: var(--st-surface); color: var(--st-ink); }
+.incident-inline-error { display: block; margin-top: 6px; color: #943e37; font-size: 11px; max-width: 260px; }
 .incident-row-actions { justify-content: flex-end; }
 .incident-comment-cell { min-width: 170px; max-width: 290px; }
 .incident-comment-cell { width: 22%; }

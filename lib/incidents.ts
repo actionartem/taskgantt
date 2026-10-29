@@ -25,6 +25,7 @@ export type Incident = IncidentInput & {
 export const INCIDENT_PRIORITIES: Record<IncidentPriority, string> = {
   low: "Низкий", medium: "Средний", high: "Высокий",
 }
+export const incidentItsmUrl = (number: string) => /^[1-9]\d{0,14}$/.test(number) ? `https://sc-echd.itsm.mos.ru/requests/${number}` : null
 const moscowDay = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", year: "numeric", month: "2-digit", day: "2-digit", calendar: "gregory", numberingSystem: "latn" })
 const moscowTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
 const displayTime = new Intl.DateTimeFormat("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })

@@ -1,15 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { FormEvent } from "react"
+import type { FormEvent, MouseEvent } from "react"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight, ExternalLink, Pencil, UserRound, Info, CircleCheck, Archive, TriangleAlert } from "lucide-react"
 import { IncidentDetails } from "@/components/incident-details"
 import { IncidentComment } from "@/components/incident-comment"
+import { IncidentPriorityField, IncidentTimingField } from "@/components/incident-inline-fields"
 import { request } from "@/lib/api"
 import {
   INCIDENT_PRIORITIES, incidentDateTime, incidentDay, incidentDeadline, incidentInputTime,
-  incidentInstant, incidentMonthDays, shiftIncidentMonth,
+  incidentInstant, incidentItsmUrl, incidentMonthDays, shiftIncidentMonth,
 } from "@/lib/incidents"
 import type { Incident, IncidentInput, IncidentPriority } from "@/lib/incidents"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -47,10 +48,10 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
   const [confirmDelete, setConfirmDelete] = useState(false)
   const sequence = useRef(0)
   const busy = useRef(false)
-  const editingComments = useRef(new Set<string>())
-  const commentEditingChanged = useCallback((id: string, editing: boolean) => {
-    if (editing) { editingComments.current.add(id); sequence.current++; setLoading(false) }
-    else editingComments.current.delete(id)
+  const editingInline = useRef(new Set<string>())
+  const inlineEditingChanged = useCallback((id: string, editing: boolean) => {
+    if (editing) { editingInline.current.add(id); sequence.current++; setLoading(false) }
+    else editingInline.current.delete(id)
   }, [])
   const alive = useRef(true)
   const refresh = useCallback(async () => {
@@ -70,7 +71,7 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
     void refresh()
     const update = () => {
       setToday(incidentDay(new Date()))
-      if (!busy.current && !editingComments.current.size && document.visibilityState === "visible") void refresh()
+      if (!busy.current && !editingInline.current.size && document.visibilityState === "visible") void refresh()
     }
     window.addEventListener("focus", update)
     const interval = setInterval(update, 120000)
@@ -163,16 +164,22 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
     } catch (cause) { setCloseError(message(cause)); void refresh() }
     finally { setCloseBusy(false) }
   }
+  const openRow = (event: MouseEvent<HTMLElement>, incident: Incident, archive = false) => {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || window.getSelection()?.toString()) return
+    if ((event.target as Element).closest('a,button,input,select,textarea,label,[data-incident-control]')) return
+    if (!archive) selectIncident(incident)
+    openEditor(incident)
+  }
   const incidentTable = (rows: Incident[], archive = false) => <div className="incidents-table-scroll" tabIndex={0}><table className="incidents-table">
     <thead><tr><th>Номер инцидента</th><th>Задача в Jira</th><th>Приоритет</th><th>Дата сгорания</th><th>Уже отложен</th><th>Отложен до</th><th>Комментарий</th>{archive && <th>Результат</th>}<th><span className="sr-only">Действия</span></th></tr></thead>
-    <tbody>{rows.map(incident => <tr key={incident.id} className={`${selected === incident.id ? "is-selected" : ""} ${archive ? `incident-archived-${incident.status}` : ""}`}>
-      <td><div className="incident-number-actions"><button className="incident-number" aria-label={`Открыть инцидент ${incident.number}`} onClick={() => { if (!archive) selectIncident(incident); openEditor(incident) }}>{incident.number}</button>{!archive && canEdit && <button className="incident-edit" title="Закрыть инцидент" aria-label={`Закрыть ${incident.number}`} onClick={() => { setClosing(incident); setCloseError("") }}><CircleCheck size={16} /></button>}</div></td>
+    <tbody>{rows.map(incident => <tr key={incident.id} className={`incident-clickable-row ${selected === incident.id ? "is-selected" : ""} ${archive ? `incident-archived-${incident.status}` : ""}`} tabIndex={0} onClick={event => openRow(event, incident, archive)} onKeyDown={event => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); if (!archive) selectIncident(incident); openEditor(incident) } }}>
+      <td><div className="incident-number-actions">{incidentItsmUrl(incident.number) ? <a className="incident-number" href={incidentItsmUrl(incident.number)!} target="_blank" rel="noopener noreferrer" aria-label={`Открыть ${incident.number} в МосИТСМ`}>{incident.number}</a> : <span className="incident-number">{incident.number}</span>}{!archive && canEdit && <button type="button" className="incident-close-button" aria-label={`Закрыть ${incident.number}`} onClick={() => { setClosing(incident); setCloseError("") }}>Закрыть</button>}</div></td>
       <td><a href={incident.jira_url} target="_blank" rel="noopener noreferrer" title={incident.jira_url}>{jiraLabel(incident.jira_url)} <ExternalLink size={13} /></a></td>
-      <td><span className={`incident-priority priority-${incident.priority}`}>{INCIDENT_PRIORITIES[incident.priority]}</span></td>
-      <td><time dateTime={incident.expires_at}>{incidentDateTime(incident.expires_at)}</time></td>
-      <td><label className="incident-check"><input type="checkbox" checked={incident.is_deferred} disabled={!canEdit} aria-label={`Отложен ${incident.number}`} onChange={event => openEditor(incident, event.target.checked)} /><span>{incident.is_deferred ? "Да" : "Нет"}</span></label></td>
-      <td>{incident.is_deferred && incident.deferred_until ? <time dateTime={incident.deferred_until}>{incidentDateTime(incident.deferred_until)}</time> : "—"}</td>
-      <td className="incident-comment-cell"><IncidentComment incident={incident} canEdit={canEdit} onSaved={acceptIncident} onEditingChange={commentEditingChanged} /></td>
+      <td><IncidentPriorityField incident={incident} canEdit={canEdit} onSaved={acceptIncident} onEditingChange={inlineEditingChanged} /></td>
+      <td><IncidentTimingField field="expires_at" incident={incident} canEdit={canEdit} onSaved={acceptIncident} onEditingChange={inlineEditingChanged} /></td>
+      <td><IncidentTimingField field="is_deferred" incident={incident} canEdit={canEdit} onSaved={acceptIncident} onEditingChange={inlineEditingChanged} /></td>
+      <td><IncidentTimingField field="deferred_until" incident={incident} canEdit={canEdit} onSaved={acceptIncident} onEditingChange={inlineEditingChanged} /></td>
+      <td className="incident-comment-cell"><IncidentComment incident={incident} canEdit={canEdit} onSaved={acceptIncident} onEditingChange={inlineEditingChanged} /></td>
       {archive && <td><span className={`incident-outcome outcome-${incident.status}`}>{incident.status === "completed" ? "Закрыт успешно" : "Сгорел"}</span><small className="incident-closure-meta">{incident.closed_at ? incidentDateTime(incident.closed_at) : ""}</small></td>}
       <td><div className="incident-row-actions">{incident.check_error && !archive && <span title={incident.check_error} aria-label="Не удалось автоматически проверить МосИТСМ"><TriangleAlert size={15} /></span>}<button className="incident-edit" title="Подробная информация из МосИТСМ" aria-label={`Подробнее ${incident.number}`} onClick={() => setDetailsIncident(incident)}><Info size={17} /></button>{canEdit && <button className="incident-edit" aria-label={`Изменить ${incident.number}`} onClick={() => openEditor(incident)}><Pencil size={15} /></button>}</div></td>
     </tr>)}</tbody>
@@ -222,8 +229,8 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
         </div>
         <div className="incidents-day-list" aria-live="polite"><h3>{dayLabel(selectedDay)} <span>{dayItems.length}</span></h3>
           {!dayItems.length && <p className="incidents-day-empty">{loaded ? "На эту дату сроков нет" : "Данные ещё не загружены"}</p>}
-          {dayItems.map(i => <div key={i.id} className={`incident-day-item ${selected === i.id ? "is-selected" : ""}`}>
-            <button className="incident-number" onClick={() => openEditor(i)}>{i.number}</button>
+          {dayItems.map(i => <div key={i.id} className={`incident-day-item ${selected === i.id ? "is-selected" : ""}`} onClick={event => openRow(event, i)}>
+            {incidentItsmUrl(i.number) ? <a className="incident-number" href={incidentItsmUrl(i.number)!} target="_blank" rel="noopener noreferrer">{i.number}</a> : <span className="incident-number">{i.number}</span>}
             <span className={`incident-priority priority-${i.priority}`}>{INCIDENT_PRIORITIES[i.priority]}</span>
             <time dateTime={incidentDeadline(i)}>{incidentInputTime(incidentDeadline(i)).slice(11)}</time>
             {canEdit && <button className="incident-edit" aria-label={`Редактировать ${i.number}`} onClick={() => openEditor(i)}><Pencil size={15} /></button>}
