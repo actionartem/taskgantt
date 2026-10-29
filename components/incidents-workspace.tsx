@@ -182,7 +182,7 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
       <div className="brand-cat"><img src="/favicon_cat_128.png" alt="Кот-клоун SimpleTracker" width={64} height={64} /></div>
       <div className="brand-name">Simple<br />Tracker</div>
       <h1>Инциденты</h1>
-      <div className="header-meta">{loaded ? `${visible.length} открытых инцидентов` : "Загрузка…"}<br />Время московское</div>
+      <div className="header-meta">{loaded ? `${visible.length} открытых инцидентов` : "Загрузка…"}</div>
       <div className="header-actions">
         <button onClick={onProfile} aria-label="Профиль"><UserRound size={18} /></button>
         {canEdit && <button className="accent-button" onClick={() => openEditor(null)}>+ Новый инцидент</button>}
