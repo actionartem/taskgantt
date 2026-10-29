@@ -19,6 +19,7 @@ export type Incident = IncidentInput & {
   closure_deadline_at?: string | null
   itsm_completed_at?: string | null
   itsm_created_at?: string | null
+  archive_initial?: boolean
   itsm_deadline_at?: string | null
   last_checked_at?: string | null
   check_error?: string | null
@@ -33,6 +34,15 @@ export function compareIncidentCreation(a: Incident, b: Incident) {
   if (Number.isFinite(first) && Number.isFinite(second) && first !== second) return second - first
   if (Number.isFinite(first) !== Number.isFinite(second)) return Number.isFinite(first) ? -1 : 1
   return b.number.localeCompare(a.number, "ru", { numeric: true }) || b.id.localeCompare(a.id, "en", { numeric: true })
+}
+export function compareArchivedIncidents(a: Incident, b: Incident) {
+  if (Boolean(a.archive_initial) !== Boolean(b.archive_initial)) return a.archive_initial ? 1 : -1
+  if (a.archive_initial) return compareIncidentCreation(a, b)
+  const first = a.closed_at ? Date.parse(a.closed_at) : NaN
+  const second = b.closed_at ? Date.parse(b.closed_at) : NaN
+  if (Number.isFinite(first) && Number.isFinite(second) && first !== second) return second - first
+  if (Number.isFinite(first) !== Number.isFinite(second)) return Number.isFinite(first) ? -1 : 1
+  return b.id.localeCompare(a.id, "en", { numeric: true })
 }
 const moscowDay = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", year: "numeric", month: "2-digit", day: "2-digit", calendar: "gregory", numberingSystem: "latn" })
 const moscowTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })

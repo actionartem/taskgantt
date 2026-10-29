@@ -10,7 +10,7 @@ import { IncidentPriorityField, IncidentTimingField } from "@/components/inciden
 import { request } from "@/lib/api"
 import {
   INCIDENT_PRIORITIES, incidentDateTime, incidentDay, incidentDeadline, incidentInputTime,
-  incidentInstant, incidentItsmUrl, incidentMonthDays, shiftIncidentMonth, compareIncidentCreation,
+  incidentInstant, incidentItsmUrl, incidentMonthDays, shiftIncidentMonth, compareArchivedIncidents,
 } from "@/lib/incidents"
 import type { Incident, IncidentInput, IncidentPriority } from "@/lib/incidents"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -82,7 +82,7 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
     !search.trim() || `${i.number} ${i.jira_url}`.toLocaleLowerCase("ru").includes(search.trim().toLocaleLowerCase("ru")),
   ).sort((a, b) => +new Date(incidentDeadline(a)) - +new Date(incidentDeadline(b)) || a.number.localeCompare(b.number, "ru", { numeric: true })), [items, search])
   const visible = useMemo(() => filtered.filter(i => !i.status || i.status === "active"), [filtered])
-  const archived = useMemo(() => filtered.filter(i => i.status && i.status !== "active").sort(compareIncidentCreation), [filtered])
+  const archived = useMemo(() => filtered.filter(i => i.status && i.status !== "active").sort(compareArchivedIncidents), [filtered])
   const byDay = useMemo(() => {
     const map = new Map<string, Incident[]>()
     for (const item of visible) {
