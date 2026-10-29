@@ -76,9 +76,9 @@ export function AuthModal({
         onEscapeKeyDown={locked ? (e) => e.preventDefault() : undefined}
       >
         <DialogHeader>
-          <DialogTitle>Добро пожаловать</DialogTitle>
-          <DialogDescription>
-            Войдите в SimpleTracker со своим логином и паролем.
+          <DialogTitle>Вход в SimpleTracker</DialogTitle>
+          <DialogDescription className="sr-only">
+            Вход по логину и паролю
           </DialogDescription>
         </DialogHeader>
 

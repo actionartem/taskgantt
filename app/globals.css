@@ -1726,14 +1726,25 @@ button[aria-pressed="true"]:not(.status-chip) {
 }
 
 /* Incident detail and archive surfaces share the workspace palette. */
-.incidents-table-panel > .incidents-table-scroll { flex: 1 1 auto; }
+.incidents-table-panel > .incidents-table-scroll { flex: 0 1 auto; }
 .incidents-table { min-width: 1100px; }
 .incident-number-actions, .incident-row-actions { display: flex; align-items: center; gap: 6px; }
 .incident-row-actions { justify-content: flex-end; }
 .incident-comment-cell { min-width: 170px; max-width: 290px; }
-.incident-comment-cell > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.incident-comment-cell { width: 22%; }
+.incident-comment-trigger, .incident-comment-readonly { display: block; width: 100%; min-height: 30px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; text-align: left; }
+.incidents-frame button.incident-comment-trigger { justify-content: flex-start; padding: 5px 6px; border: 1px solid transparent; border-radius: 4px; background: transparent; font-weight: 400; }
+.incidents-frame button.incident-comment-trigger:hover, .incidents-frame button.incident-comment-trigger:focus-visible { border-color: var(--st-line); background: var(--st-surface); }
+.incident-comment-trigger > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.incident-comment-editor { min-width: 190px; }
+.incident-comment-editor textarea { display: block; width: 100%; min-height: 76px; max-height: 240px; resize: vertical; padding: 8px; border: 1px solid var(--st-ink); border-radius: 4px; background: var(--st-surface); color: var(--st-ink); font-size: 12px; line-height: 1.5; }
+.incident-comment-actions { display: flex; justify-content: flex-end; align-items: center; gap: 5px; margin-top: 5px; }
+.incidents-frame .incident-comment-actions button { min-height: 28px; min-width: 28px; padding: 4px 6px; border-color: var(--st-line); background: var(--st-surface); font-size: 11px; }
+.incident-comment-actions > span { display: flex; align-items: center; gap: 5px; margin-right: auto; color: var(--st-muted); font-size: 11px; }
+.incident-comment-editor > p { color: #943e37; font-size: 11px; margin: 6px 0 0; }
 .incidents-table th:last-child, .incidents-table td:last-child { position: sticky; right: 0; background: var(--st-surface); z-index: 2; }
 .incidents-table th:last-child { background: var(--st-surface2); z-index: 4; }
+.incidents-table tr:has(.incident-comment-editor) td:last-child { position: static; }
 .incidents-archive { flex: 0 0 auto; max-height: 46%; overflow: auto; border-top: 1px solid var(--st-line); }
 .incidents-archive > summary { display: flex; align-items: center; gap: 9px; min-height: 46px; padding: 10px 14px; cursor: pointer; font-size: 13px; font-weight: 650; }
 .incidents-archive > summary::before { content: "›"; font-size: 20px; line-height: 1; }

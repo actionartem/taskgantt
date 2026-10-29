@@ -319,13 +319,13 @@ export const TaskDetails = memo(function TaskDetails({ taskId, readOnly = false 
     {error && <p role="alert" className="tracker-error">{error}</p>}
     <details>
       <summary>АЗ в Jira · {az?.issue_key || "не привязана"}</summary>
-      {az ? <div className="detail-facts">
+      {az && <div className="detail-facts">
         <a href={az.url} target="_blank" rel="noreferrer">{az.issue_key} ↗</a>
         <span>Статус АЗ: {az.status}</span>
         <span>Исполнитель АЗ: {az.assignee || "Не назначен"}</span>
         <span>Проверено: {displayTime(az.checked_at)}</span>
         {az.epic_url && <a href={az.epic_url} target="_blank" rel="noreferrer">Эпик {az.epic_key} ↗</a>}
-      </div> : <p>Агент привяжет дочернюю задачу по АЗ.</p>}
+      </div>}
     </details>
     <ApprovedDocument taskId={taskId} readOnly={readOnly} />
   </div>;

@@ -22,7 +22,7 @@ export const ITSM_LABELS: Record<string, string> = {
   ci: "Оборудование", cis: "Оборудование", ci_id: "Номер оборудования", problem: "Проблема", workflow: "Изменение", project: "Проект", task: "Задача", template: "Шаблон",
   grouped_into: "Объединён с обращением", grouping: "Группировка", supplier: "Поставщик", supplier_requestID: "Номер у поставщика",
   custom_fields: "Дополнительные поля", tags: "Метки", attachments: "Вложения", person: "Автор", text: "Текст", medium: "Канал", internal: "Внутренняя запись",
-  name: "Название", account: "Пространство", label: "Обозначение", description: "Описание", localized_name: "Название", url: "Ссылка", download_url: "Скачать", source_url: "Источник",
+  name: "Название", account: "Пространство", label: "Обозначение", description: "Описание", localized_name: "Название", url: "Ссылка", download_url: "Скачать", source_url: "Источник", uri: "Ссылка",
   filename: "Файл", file_name: "Файл", content_type: "Тип файла", size: "Размер", file_size: "Размер", byte_size: "Размер", note: "Заметка", note_id: "Номер заметки",
   action: "Действие", changes: "Изменения", user: "Пользователь", nodeID: "Внутренний идентификатор", reviewed: "Проверен", addressed: "Обращение рассмотрено", satisfaction: "Оценка заявителя",
   major_incident_status: "Статус крупного инцидента", new_assignment: "Новое назначение", provider_not_accountable: "Ответственность поставщика приостановлена", provider_was_not_accountable: "Была приостановка ответственности",
@@ -38,7 +38,7 @@ export function entityName(value: unknown): string {
   if (value == null) return "Не указан"
   if (typeof value !== "object") return String(value)
   const item = value as ItsmRecord
-  return String(item.name || item.subject || item.label || item.id || "Запись")
+  return String(item.name || item.subject || item.label || item.file_name || item.filename || item.id || "Запись")
 }
 export function httpLink(value: unknown): string | undefined {
   if (typeof value !== "string") return

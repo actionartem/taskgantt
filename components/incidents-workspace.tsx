@@ -5,6 +5,7 @@ import type { FormEvent } from "react"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight, ExternalLink, Pencil, UserRound, Info, CircleCheck, Archive, TriangleAlert } from "lucide-react"
 import { IncidentDetails } from "@/components/incident-details"
+import { IncidentComment } from "@/components/incident-comment"
 import { request } from "@/lib/api"
 import {
   INCIDENT_PRIORITIES, incidentDateTime, incidentDay, incidentDeadline, incidentInputTime,
@@ -30,7 +31,6 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
-  const [priority, setPriority] = useState("")
   const [today, setToday] = useState(() => incidentDay(new Date()))
   const [month, setMonth] = useState(() => incidentDay(new Date()).slice(0, 7))
   const [selectedDay, setSelectedDay] = useState(() => incidentDay(new Date()))
@@ -46,6 +46,11 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
   const [confirmDelete, setConfirmDelete] = useState(false)
   const sequence = useRef(0)
   const busy = useRef(false)
+  const editingComments = useRef(new Set<string>())
+  const commentEditingChanged = useCallback((id: string, editing: boolean) => {
+    if (editing) { editingComments.current.add(id); sequence.current++; setLoading(false) }
+    else editingComments.current.delete(id)
+  }, [])
   const alive = useRef(true)
   const refresh = useCallback(async () => {
     const seq = ++sequence.current
@@ -64,7 +69,7 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
     void refresh()
     const update = () => {
       setToday(incidentDay(new Date()))
-      if (!busy.current && document.visibilityState === "visible") void refresh()
+      if (!busy.current && !editingComments.current.size && document.visibilityState === "visible") void refresh()
     }
     window.addEventListener("focus", update)
     const interval = setInterval(update, 120000)
@@ -72,9 +77,8 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
   }, [refresh])
 
   const filtered = useMemo(() => items.filter(i =>
-    (!search.trim() || `${i.number} ${i.jira_url}`.toLocaleLowerCase("ru").includes(search.trim().toLocaleLowerCase("ru"))) &&
-    (!priority || i.priority === priority),
-  ).sort((a, b) => +new Date(incidentDeadline(a)) - +new Date(incidentDeadline(b)) || a.number.localeCompare(b.number, "ru", { numeric: true })), [items, search, priority])
+    !search.trim() || `${i.number} ${i.jira_url}`.toLocaleLowerCase("ru").includes(search.trim().toLocaleLowerCase("ru")),
+  ).sort((a, b) => +new Date(incidentDeadline(a)) - +new Date(incidentDeadline(b)) || a.number.localeCompare(b.number, "ru", { numeric: true })), [items, search])
   const visible = useMemo(() => filtered.filter(i => !i.status || i.status === "active"), [filtered])
   const archived = useMemo(() => filtered.filter(i => i.status && i.status !== "active").sort((a, b) => +new Date(b.closed_at || b.updated_at) - +new Date(a.closed_at || a.updated_at)), [filtered])
   const byDay = useMemo(() => {
@@ -143,6 +147,7 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
     finally { busy.current = false; if (alive.current) setSaving(false) }
   }
   const acceptIncident = (saved: Incident) => {
+    if (!alive.current) return
     sequence.current++; setLoading(false); setError("")
     setItems(previous => [...previous.filter(i => i.id !== saved.id), saved])
     setDetailsIncident(previous => previous?.id === saved.id ? saved : previous)
@@ -166,7 +171,7 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
       <td><time dateTime={incident.expires_at}>{incidentDateTime(incident.expires_at)}</time></td>
       <td><label className="incident-check"><input type="checkbox" checked={incident.is_deferred} disabled={!canEdit} aria-label={`Отложен ${incident.number}`} onChange={event => openEditor(incident, event.target.checked)} /><span>{incident.is_deferred ? "Да" : "Нет"}</span></label></td>
       <td>{incident.is_deferred && incident.deferred_until ? <time dateTime={incident.deferred_until}>{incidentDateTime(incident.deferred_until)}</time> : "—"}</td>
-      <td className="incident-comment-cell"><span title={incident.comment || undefined}>{incident.comment || "—"}</span></td>
+      <td className="incident-comment-cell"><IncidentComment incident={incident} canEdit={canEdit} onSaved={acceptIncident} onEditingChange={commentEditingChanged} /></td>
       {archive && <td><span className={`incident-outcome outcome-${incident.status}`}>{incident.status === "completed" ? "Закрыт успешно" : "Сгорел"}</span><small className="incident-closure-meta">{incident.closure_source === "manual" ? "Вручную" : "МосИТСМ"}{incident.closed_at ? ` · ${incidentDateTime(incident.closed_at)}` : ""}</small></td>}
       <td><div className="incident-row-actions">{incident.check_error && !archive && <span title={incident.check_error} aria-label="Не удалось автоматически проверить МосИТСМ"><TriangleAlert size={15} /></span>}<button className="incident-edit" title="Подробная информация из МосИТСМ" aria-label={`Подробнее ${incident.number}`} onClick={() => setDetailsIncident(incident)}><Info size={17} /></button>{canEdit && <button className="incident-edit" aria-label={`Изменить ${incident.number}`} onClick={() => openEditor(incident)}><Pencil size={15} /></button>}</div></td>
     </tr>)}</tbody>
@@ -190,14 +195,13 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
     </nav>
     <div className="tracker-filters incidents-filters">
       <input aria-label="Поиск инцидентов" placeholder="Номер инцидента или Jira" value={search} onChange={e => setSearch(e.target.value)} />
-      <select aria-label="Приоритет" value={priority} onChange={e => setPriority(e.target.value)}><option value="">Приоритет: все</option>{Object.entries(INCIDENT_PRIORITIES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
-      {(search || priority) && <button onClick={() => { setSearch(""); setPriority("") }}>Сбросить фильтры</button>}
+      {search && <button onClick={() => setSearch("")}>Сбросить поиск</button>}
     </div>
     {error && <div className="tracker-error" role="alert">{loaded ? "Данные могли устареть. " : "Не удалось загрузить инциденты. "}{error}</div>}
     <main className="incidents-layout" aria-label="Инциденты и календарь">
       <section className="incidents-table-panel" aria-label="Список инцидентов" aria-busy={loading}>
         {incidentTable(visible)}
-        {!visible.length && <div className="incidents-empty" role="status">{loading && !loaded ? "Загружаем инциденты…" : !loaded ? "Список недоступен. Попробуйте обновить данные." : items.length ? "Нет инцидентов по выбранным фильтрам" : "Инцидентов пока нет"}</div>}
+        {!visible.length && <div className="incidents-empty" role="status">{loading && !loaded ? "Загружаем инциденты…" : !loaded ? "Список недоступен. Попробуйте обновить данные." : search ? "Ничего не найдено" : "Открытых инцидентов нет"}</div>}
         <details className="incidents-archive"><summary><Archive size={16} />Архив <span>{archived.length}</span></summary>{archived.length ? incidentTable(archived, true) : <p className="itsm-empty">Закрытых инцидентов нет</p>}</details>
       </section>
       <section className="incidents-calendar-panel" aria-label="Календарь инцидентов">
@@ -225,7 +229,7 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
     </main>
     <Dialog open={!!editor} onOpenChange={open => { if (!open) closeEditor() }}>
       <DialogContent className="incident-editor" showCloseButton={!saving}>
-        <DialogHeader><DialogTitle>{editor?.incident ? `Инцидент ${editor.incident.number}` : "Новый инцидент"}</DialogTitle><DialogDescription>Дата и время по Москве (МСК, UTC+3).</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{editor?.incident ? `Инцидент ${editor.incident.number}` : "Новый инцидент"}</DialogTitle><DialogDescription className="sr-only">Карточка инцидента</DialogDescription></DialogHeader>
         {editor && <form onSubmit={save}>
           <fieldset disabled={saving || !canEdit} className="incident-form-fields">
             <label htmlFor="incident-number">Номер инцидента<input id="incident-number" required maxLength={100} value={editor.draft.number} onChange={e => change("number", e.target.value)} autoFocus /></label>
@@ -244,6 +248,6 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
       </DialogContent>
     </Dialog>
     {detailsIncident && <IncidentDetails incident={detailsIncident} canEdit={canEdit && (!detailsIncident.status || detailsIncident.status === "active")} onClose={() => setDetailsIncident(null)} onSaved={acceptIncident} />}
-    <Dialog open={!!closing} onOpenChange={open => { if (!open && !closeBusy) setClosing(null) }}><DialogContent className="incident-close-modal" showCloseButton={!closeBusy} onInteractOutside={event => { if (closeBusy) event.preventDefault() }} onEscapeKeyDown={event => { if (closeBusy) event.preventDefault() }}><DialogHeader><DialogTitle>Закрыть инцидент {closing?.number}</DialogTitle><DialogDescription>Выберите результат. Инцидент перейдёт в архив, автоматические проверки прекратятся.</DialogDescription></DialogHeader>{closeError && <p className="itsm-error" role="alert">{closeError}</p>}<div className="incident-close-options"><button disabled={closeBusy} className="close-completed" onClick={() => void closeIncident("completed")}><CircleCheck size={23} /><b>Закрыт успешно</b><span>Работа выполнена</span></button><button disabled={closeBusy} className="close-burned" onClick={() => void closeIncident("burned")}><TriangleAlert size={23} /><b>Сгорел</b><span>Срок нарушен</span></button></div>{closeBusy && <p role="status">Сохраняем результат…</p>}</DialogContent></Dialog>
+    <Dialog open={!!closing} onOpenChange={open => { if (!open && !closeBusy) setClosing(null) }}><DialogContent className="incident-close-modal" showCloseButton={!closeBusy} onInteractOutside={event => { if (closeBusy) event.preventDefault() }} onEscapeKeyDown={event => { if (closeBusy) event.preventDefault() }}><DialogHeader><DialogTitle>Закрыть инцидент {closing?.number}</DialogTitle><DialogDescription className="sr-only">Результат закрытия инцидента</DialogDescription></DialogHeader>{closeError && <p className="itsm-error" role="alert">{closeError}</p>}<div className="incident-close-options"><button disabled={closeBusy} className="close-completed" onClick={() => void closeIncident("completed")}><CircleCheck size={23} /><b>Закрыт успешно</b></button><button disabled={closeBusy} className="close-burned" onClick={() => void closeIncident("burned")}><TriangleAlert size={23} /><b>Сгорел</b></button></div>{closeBusy && <p role="status">Сохраняем результат…</p>}</DialogContent></Dialog>
   </div>
 }
