@@ -35,6 +35,7 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
   const [month, setMonth] = useState(() => incidentDay(new Date()).slice(0, 7))
   const [selectedDay, setSelectedDay] = useState(() => incidentDay(new Date()))
   const [selected, setSelected] = useState<string | null>(null)
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [detailsIncident, setDetailsIncident] = useState<Incident | null>(null)
   const [closing, setClosing] = useState<Incident | null>(null)
@@ -162,7 +163,7 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
     } catch (cause) { setCloseError(message(cause)); void refresh() }
     finally { setCloseBusy(false) }
   }
-  const incidentTable = (rows: Incident[], archive = false) => <div className="incidents-table-scroll"><table className="incidents-table">
+  const incidentTable = (rows: Incident[], archive = false) => <div className="incidents-table-scroll" tabIndex={0}><table className="incidents-table">
     <thead><tr><th>Номер инцидента</th><th>Задача в Jira</th><th>Приоритет</th><th>Дата сгорания</th><th>Уже отложен</th><th>Отложен до</th><th>Комментарий</th>{archive && <th>Результат</th>}<th><span className="sr-only">Действия</span></th></tr></thead>
     <tbody>{rows.map(incident => <tr key={incident.id} className={`${selected === incident.id ? "is-selected" : ""} ${archive ? `incident-archived-${incident.status}` : ""}`}>
       <td><div className="incident-number-actions"><button className="incident-number" aria-label={`Открыть инцидент ${incident.number}`} onClick={() => { if (!archive) selectIncident(incident); openEditor(incident) }}>{incident.number}</button>{!archive && canEdit && <button className="incident-edit" title="Закрыть инцидент" aria-label={`Закрыть ${incident.number}`} onClick={() => { setClosing(incident); setCloseError("") }}><CircleCheck size={16} /></button>}</div></td>
@@ -202,7 +203,10 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
       <section className="incidents-table-panel" aria-label="Список инцидентов" aria-busy={loading}>
         {incidentTable(visible)}
         {!visible.length && <div className="incidents-empty" role="status">{loading && !loaded ? "Загружаем инциденты…" : !loaded ? "Список недоступен. Попробуйте обновить данные." : search ? "Ничего не найдено" : "Открытых инцидентов нет"}</div>}
-        <details className="incidents-archive"><summary><Archive size={16} />Архив <span>{archived.length}</span></summary>{archived.length ? incidentTable(archived, true) : <p className="itsm-empty">Закрытых инцидентов нет</p>}</details>
+        <section className={`incidents-archive${archiveOpen ? " is-open" : ""}`}>
+          <button type="button" className="incidents-archive-toggle" aria-expanded={archiveOpen} aria-controls="incidents-archive-content" onClick={() => setArchiveOpen(value => !value)}><ChevronRight size={16} className="archive-chevron" /><Archive size={16} />Архив <span>{archived.length}</span></button>
+          {archiveOpen && <div id="incidents-archive-content" className="incidents-archive-content" role="region" aria-label="Архив инцидентов">{archived.length ? incidentTable(archived, true) : <p className="itsm-empty">Закрытых инцидентов нет</p>}</div>}
+        </section>
       </section>
       <section className="incidents-calendar-panel" aria-label="Календарь инцидентов">
         <div className="incidents-calendar-heading"><h2>Календарь инцидентов</h2></div>

@@ -1745,12 +1745,15 @@ button[aria-pressed="true"]:not(.status-chip) {
 .incidents-table th:last-child, .incidents-table td:last-child { position: sticky; right: 0; background: var(--st-surface); z-index: 2; }
 .incidents-table th:last-child { background: var(--st-surface2); z-index: 4; }
 .incidents-table tr:has(.incident-comment-editor) td:last-child { position: static; }
-.incidents-archive { flex: 0 0 auto; max-height: 46%; overflow: auto; border-top: 1px solid var(--st-line); }
-.incidents-archive > summary { display: flex; align-items: center; gap: 9px; min-height: 46px; padding: 10px 14px; cursor: pointer; font-size: 13px; font-weight: 650; }
-.incidents-archive > summary::before { content: "›"; font-size: 20px; line-height: 1; }
-.incidents-archive[open] > summary::before { transform: rotate(90deg); }
-.incidents-archive > summary span { margin-left: auto; color: var(--st-muted); }
-.incidents-archive > p { padding: 14px; }
+.incidents-archive { display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; overflow: hidden; border-top: 1px solid var(--st-line); }
+.incidents-archive.is-open { flex: 1 1 0; min-height: min(150px, 50%); }
+.incidents-frame button.incidents-archive-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 9px; flex-shrink: 0; width: 100%; min-height: 46px; padding: 10px 14px; border: 0; border-radius: 0; background: var(--st-surface); cursor: pointer; font-size: 13px; font-weight: 650; }
+.incidents-frame button.incidents-archive-toggle:hover { background: var(--st-surface2); }
+.incidents-archive-toggle[aria-expanded="true"] .archive-chevron { transform: rotate(90deg); }
+.incidents-archive-toggle > span { margin-left: auto; color: var(--st-muted); }
+.incidents-archive-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.incidents-archive-content > .incidents-table-scroll { flex: 1; }
+.incidents-archive-content > p { padding: 14px; }
 .incidents-table tr.incident-archived-burned td { background: #fae9e5; }
 .incidents-table tr.incident-archived-completed td { background: #e9f1e9; }
 .incident-outcome { display: block; white-space: nowrap; font-size: 12px; font-weight: 650; }
@@ -1883,8 +1886,7 @@ button[aria-pressed="true"]:not(.status-chip) {
 @media (max-width: 1100px) {
   .incidents-table-panel { max-height: none; }
   .incidents-table-panel > .incidents-table-scroll { max-height: 45dvh; }
-  .incidents-archive { max-height: none; }
-  .incidents-archive .incidents-table-scroll { max-height: 45dvh; }
+  .incidents-table-panel:has(.incidents-archive.is-open) { height: 100%; }
 }
 @media (max-width: 650px) {
   .incident-details-modal { width: 100vw !important; max-width: 100vw !important; height: 100dvh; max-height: 100dvh !important; border: 0 !important; border-radius: 0 !important; }
