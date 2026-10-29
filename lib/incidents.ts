@@ -18,6 +18,7 @@ export type Incident = IncidentInput & {
   closure_source?: "manual" | "itsm" | null
   closure_deadline_at?: string | null
   itsm_completed_at?: string | null
+  itsm_created_at?: string | null
   itsm_deadline_at?: string | null
   last_checked_at?: string | null
   check_error?: string | null
@@ -26,6 +27,13 @@ export const INCIDENT_PRIORITIES: Record<IncidentPriority, string> = {
   low: "Низкий", medium: "Средний", high: "Высокий",
 }
 export const incidentItsmUrl = (number: string) => /^[1-9]\d{0,14}$/.test(number) ? `https://sc-echd.itsm.mos.ru/requests/${number}` : null
+export function compareIncidentCreation(a: Incident, b: Incident) {
+  const first = a.itsm_created_at ? Date.parse(a.itsm_created_at) : NaN
+  const second = b.itsm_created_at ? Date.parse(b.itsm_created_at) : NaN
+  if (Number.isFinite(first) && Number.isFinite(second) && first !== second) return second - first
+  if (Number.isFinite(first) !== Number.isFinite(second)) return Number.isFinite(first) ? -1 : 1
+  return b.number.localeCompare(a.number, "ru", { numeric: true }) || b.id.localeCompare(a.id, "en", { numeric: true })
+}
 const moscowDay = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", year: "numeric", month: "2-digit", day: "2-digit", calendar: "gregory", numberingSystem: "latn" })
 const moscowTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
 const displayTime = new Intl.DateTimeFormat("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })

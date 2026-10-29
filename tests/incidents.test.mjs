@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { incidentDay, incidentDeadline, incidentInputTime, incidentInstant, incidentMonthDays, shiftIncidentMonth } from '../lib/incidents.ts';
+import { incidentDay, incidentDeadline, incidentInputTime, incidentInstant, incidentMonthDays, shiftIncidentMonth, compareIncidentCreation } from '../lib/incidents.ts';
 
 test('incident deadlines use Moscow days across UTC midnight and preserve original expiry', () => {
   const item = { expires_at: '2026-10-29T20:59:00Z', is_deferred: true, deferred_until: '2026-10-29T21:01:00Z' };
@@ -18,4 +18,17 @@ test('incident month starts Monday and includes leap days and year boundaries', 
   assert.equal(new Date(`${feb[0]}T00:00:00Z`).getUTCDay(), 1);
   assert.equal(shiftIncidentMonth('2026-12', 1), '2027-01');
   assert.equal(shiftIncidentMonth('2027-01', -1), '2026-12');
+});
+
+test('archive chronology uses source creation instants, with unknown dates last and stable ties', () => {
+  const rows = [
+    {id:'1',number:'999',itsm_created_at:null,created_at:'2027-01-01',closed_at:'2027-01-01'},
+    {id:'2',number:'101',itsm_created_at:'2026-06-18T17:47:00+03:00',created_at:'2026-10-29',closed_at:'2026-10-29'},
+    {id:'3',number:'102',itsm_created_at:'2026-10-20T14:00:00Z',created_at:'2026-10-01',closed_at:'2026-10-01'},
+    {id:'4',number:'103',itsm_created_at:'2026-06-18T14:47:00Z',created_at:'2026-10-28',closed_at:'2026-10-28'},
+    {id:'5',number:'998',itsm_created_at:'invalid',created_at:'2028-01-01',closed_at:'2028-01-01'},
+    {id:'6',number:'100',itsm_created_at:'2025-12-31T23:59:00Z',created_at:'2026-10-30',closed_at:'2026-10-30'},
+  ];
+  assert.deepEqual([...rows].sort(compareIncidentCreation).map(row=>row.id),['3','4','2','6','1','5']);
+  assert.equal(compareIncidentCreation(rows[0],rows[0]),0);
 });
