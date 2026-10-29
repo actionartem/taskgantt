@@ -6,21 +6,34 @@ export type IncidentInput = {
   expires_at: string
   is_deferred: boolean
   deferred_until: string | null
+  comment?: string
 }
 export type Incident = IncidentInput & {
   id: string
   version: number
   created_at: string
   updated_at: string
+  status?: "active" | "completed" | "burned"
+  closed_at?: string | null
+  closure_source?: "manual" | "itsm" | null
+  closure_deadline_at?: string | null
+  itsm_completed_at?: string | null
+  itsm_deadline_at?: string | null
+  last_checked_at?: string | null
+  check_error?: string | null
 }
 export const INCIDENT_PRIORITIES: Record<IncidentPriority, string> = {
   low: "Низкий", medium: "Средний", high: "Высокий",
 }
-const moscowDay = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Moscow" })
+const moscowDay = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", year: "numeric", month: "2-digit", day: "2-digit", calendar: "gregory", numberingSystem: "latn" })
 const moscowTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
 const displayTime = new Intl.DateTimeFormat("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
 export const incidentDeadline = (incident: IncidentInput) => incident.is_deferred ? incident.deferred_until! : incident.expires_at
-export const incidentDay = (instant: string | Date) => moscowDay.format(new Date(instant))
+export const incidentDay = (instant: string | Date) => {
+  const parts = moscowDay.formatToParts(new Date(instant))
+  const part = (type: string) => parts.find(p => p.type === type)!.value
+  return `${part("year")}-${part("month")}-${part("day")}`
+}
 export const incidentDateTime = (instant: string) => displayTime.format(new Date(instant))
 export const incidentInputTime = (instant: string) => `${incidentDay(instant)}T${moscowTime.format(new Date(instant))}`
 export const incidentInstant = (value: string) => new Date(`${value}:00+03:00`).toISOString()
