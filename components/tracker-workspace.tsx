@@ -2,6 +2,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import { UserRound, Pencil, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { useApp } from "@/contexts/app-context";
 import { request } from "@/lib/api";
 import {
@@ -67,6 +68,17 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
       "tasks" | "documents" | "attention" | "hours"
     >("tasks"),
     [mobileView, setMobileView] = useState<"list" | "gantt">("list");
+  useEffect(() => {
+    const section = new URLSearchParams(window.location.search).get("view");
+    if (section === "documents" || section === "attention" || section === "hours") setView(section);
+  }, []);
+  const selectView = (section: "tasks" | "documents" | "attention" | "hours") => {
+    setView(section);
+    const url = new URL(window.location.href);
+    if (section === "tasks") url.searchParams.delete("view");
+    else url.searchParams.set("view", section);
+    window.history.replaceState(null, "", url);
+  };
   const [search, setSearch] = useState(""),
     [statuses, setStatuses] = useState<TaskStatus[] | null>(null),
     [assignee, setAssignee] = useState(""),
@@ -347,28 +359,23 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
       <nav className="tracker-tabs" aria-label="Разделы">
         <button
           aria-current={view === "tasks" ? "page" : undefined}
-          onClick={() => setView("tasks")}
+          onClick={() => selectView("tasks")}
         >
           Задачи и Гант
         </button>
         <button
-          aria-current={view === "attention" ? "page" : undefined}
-          onClick={() => setView("attention")}
-        >
-          Требует внимания
-        </button>
-        <button
           aria-current={view === "documents" ? "page" : undefined}
-          onClick={() => setView("documents")}
+          onClick={() => selectView("documents")}
         >
           Документы
         </button>
         <button
           aria-current={view === "hours" ? "page" : undefined}
-          onClick={() => setView("hours")}
+          onClick={() => selectView("hours")}
         >
           Часы
         </button>
+        <Link href="/incidents" className="incidents-tab">Инциденты</Link>
       </nav>
       {refreshError && (
         <div role="alert" className="tracker-error">
