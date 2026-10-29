@@ -47,10 +47,12 @@ export function TaskForm({
   task,
   open,
   onClose,
+  readOnly = false,
 }: {
   task?: Task;
   open: boolean;
   onClose: () => void;
+  readOnly?: boolean;
 }) {
   const { settings, addTask, updateTask, deleteTask } = useApp();
   const [draft, setDraft] = useState<Task>(empty),
@@ -73,6 +75,7 @@ export function TaskForm({
     openedId.current = key;
   }, [open, task]);
   const set = <K extends keyof Task>(key: K, value: Task[K]) => {
+    if (readOnly) return;
     setDraft((p) => ({ ...p, [key]: value }));
     setDirty(true);
   };
@@ -86,7 +89,7 @@ export function TaskForm({
   const actionDate = draft.nextActionAt || draft.replyDueAt;
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (saving) return;
+    if (saving || readOnly) return;
     if (!validateTaskId(draft.id)) {
       setError("ID должен быть 5-значным числом");
       return;
@@ -145,7 +148,7 @@ export function TaskForm({
           <DialogDescription className="sr-only">Карточка задачи</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="task-editor">
-          <fieldset disabled={saving}>
+          <fieldset disabled={saving || readOnly}>
             <div className="form-grid">
               <label>
                 ID
@@ -311,7 +314,7 @@ export function TaskForm({
             </p>
           )}
           <div className="form-actions">
-            {task && (
+            {task && !readOnly && (
               <button
                 type="button"
                 className="delete-task"
@@ -333,15 +336,15 @@ export function TaskForm({
               </button>
             )}
             <button type="button" disabled={saving} onClick={close}>
-              Отмена
+              {readOnly ? "Закрыть" : "Отмена"}
             </button>
-            <button type="submit" className="accent-button" disabled={saving}>
+            {!readOnly && <button type="submit" className="accent-button" disabled={saving}>
               {saving ? "Сохраняю…" : task ? "Сохранить" : "Создать"}
-            </button>
+            </button>}
           </div>
         </form>
         {actionText && <div className="automatic-next-action"><span>Следующее действие</span><b>{actionText}</b>{actionDate && <small>{displayTime(actionDate)}</small>}</div>}
-        {task && <TaskDetails key={task.id} taskId={task.id} />}
+        {task && <TaskDetails key={task.id} taskId={task.id} readOnly={readOnly} />}
         <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
           <AlertDialogContent>
             <AlertDialogTitle>Закрыть без сохранения?</AlertDialogTitle>

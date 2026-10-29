@@ -10,7 +10,8 @@ import { Settings } from "@/components/settings"
 import { AuthModal } from "@/components/auth-modal"
 import { ProfileModal } from "@/components/profile-modal"
 import type { Task } from "@/lib/types"
-import { loginPassword, logout, registerPassword } from "@/lib/api"
+import { getMe, loginPassword, logout, registerPassword } from "@/lib/api"
+import { permissionsFor, type AccessRole } from "@/lib/permissions"
 import { useApp } from "@/contexts/app-context"
 
 interface AuthenticatedUser {
@@ -20,15 +21,8 @@ interface AuthenticatedUser {
   role_text?: string
   telegram_id?: string | null
   is_superadmin?: boolean
+  access_role?: AccessRole
   token?: string
-}
-
-function isReadOnlyUser(user: AuthenticatedUser | null) {
-  if (!user || user.is_superadmin) return false
-  const role = String(user.role_text || "").toLowerCase()
-  return ["viewer", "read-only", "readonly", "только чтение", "просмотр", "наблюдатель"].some((marker) =>
-    role.includes(marker),
-  )
 }
 
 export default function TrackerPage({ section = "tasks" }: { section?: "tasks" | "incidents" }) {
@@ -43,6 +37,27 @@ export default function TrackerPage({ section = "tasks" }: { section?: "tasks" |
 
   const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
+  const permissions = permissionsFor(currentUser)
+
+  useEffect(() => {
+    let live = true
+    const refreshIdentity = () => {
+      const raw = localStorage.getItem("st_user")
+      if (!raw) return
+      let stored: AuthenticatedUser
+      try { stored = JSON.parse(raw) } catch { return }
+      if (!stored.token) return
+      void getMe().then(fresh => {
+        if (!live || localStorage.getItem("st_user") !== raw) return
+        const updated = { ...stored, ...fresh, role_text: fresh.role_text || undefined }
+        localStorage.setItem("st_user", JSON.stringify(updated))
+        setCurrentUser(updated)
+      }).catch(() => {})
+    }
+    refreshIdentity()
+    window.addEventListener("focus", refreshIdentity)
+    return () => { live = false; window.removeEventListener("focus", refreshIdentity) }
+  }, [])
 
   // при загрузке — читаем юзера
   useEffect(() => {
@@ -68,16 +83,15 @@ export default function TrackerPage({ section = "tasks" }: { section?: "tasks" |
   }, [refreshFromApi, section])
 
   const handleCreateTask = useCallback(() => {
-    if (isReadOnlyUser(currentUser)) return
+    if (!permissionsFor(currentUser).editTasks) return
     setEditingTask(undefined)
     setShowTaskForm(true)
   }, [currentUser])
 
   const handleEditTask = useCallback((task: Task) => {
-    if (isReadOnlyUser(currentUser)) return
     setEditingTask(task)
     setShowTaskForm(true)
-  }, [currentUser])
+  }, [])
 
   const handleCloseTaskForm = useCallback(() => {
     setShowTaskForm(false)
@@ -99,6 +113,7 @@ export default function TrackerPage({ section = "tasks" }: { section?: "tasks" |
         role_text: (user as any).role_text,
         telegram_id: (user as any).telegram_id,
         is_superadmin: (user as any).is_superadmin,
+        access_role: user.access_role,
         token: (user as any).token,
       })
       if (section === "tasks") await refreshFromApi().catch((e) => console.error("refreshFromApi failed:", e))
@@ -132,6 +147,7 @@ export default function TrackerPage({ section = "tasks" }: { section?: "tasks" |
         role_text: (user as any).role_text,
         telegram_id: (user as any).telegram_id,
         is_superadmin: (user as any).is_superadmin,
+        access_role: user.access_role,
         token: (user as any).token,
       })
       if (section === "tasks") await refreshFromApi().catch((e) => console.error("refreshFromApi failed:", e))
@@ -193,19 +209,19 @@ export default function TrackerPage({ section = "tasks" }: { section?: "tasks" |
         <>
           {authError && <p className="tracker-error" role="alert">{authError}</p>}
           {section === "incidents" ? (
-            <IncidentsWorkspace key={currentUser.id || currentUser.login} onProfile={handleHeaderUserClick} canEdit={!isReadOnlyUser(currentUser)} />
+            <IncidentsWorkspace key={currentUser.id || currentUser.login} onProfile={handleHeaderUserClick} canEdit={permissions.editIncidents} />
           ) : (
-            <TrackerWorkspace onCreate={handleCreateTask} onEdit={handleEditTask} onSettings={handleOpenSettings} onExport={handleOpenExport} onProfile={handleHeaderUserClick} canEdit={!isReadOnlyUser(currentUser)} />
+            <TrackerWorkspace onCreate={handleCreateTask} onEdit={handleEditTask} onSettings={handleOpenSettings} onExport={handleOpenExport} onProfile={handleHeaderUserClick} canEdit={permissions.editTasks} />
           )}
 
           <TaskExportModal open={showExportModal} onOpenChange={setShowExportModal} />
-          <Settings open={showSettings} onClose={() => setShowSettings(false)} />
+          <Settings open={showSettings} onClose={() => setShowSettings(false)} canManageUsers={permissions.manageUsers} />
         </>
       ) : authError ? (
         <div className="bg-red-500 text-white px-4 py-2 text-sm text-center">{authError}</div>
       ) : null}
 
-      <TaskForm task={editingTask} open={!!currentUser && showTaskForm} onClose={handleCloseTaskForm} />
+      <TaskForm task={editingTask} open={!!currentUser && showTaskForm} onClose={handleCloseTaskForm} readOnly={!permissions.editTasks} />
       {!currentUser && (
         <AuthModal
           open={isAuthModalOpen}

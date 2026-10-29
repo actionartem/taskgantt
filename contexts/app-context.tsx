@@ -77,6 +77,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           id: Number(u.id),
           name: u.name,
           role: u.role_text,
+          accessRole: u.access_role,
+          isSuperadmin: u.is_superadmin,
         })),
         tags: tags.map((t) => t.title),
       };

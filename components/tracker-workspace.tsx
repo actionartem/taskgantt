@@ -1,7 +1,7 @@
 "use client";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
-import { UserRound, Pencil, ExternalLink } from "lucide-react";
+import { UserRound, Pencil, Eye, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useApp } from "@/contexts/app-context";
 import { request } from "@/lib/api";
@@ -343,17 +343,17 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
         </div>
         <div className="header-actions">
           <button onClick={onExport}>Excel</button>
-          <button onClick={onSettings}>Настройки</button>
+          {canEdit && <button onClick={onSettings}>Настройки</button>}
           <button onClick={onProfile} aria-label="Профиль">
             <UserRound size={18} />
           </button>
-          <button
+          {canEdit && <button
             className="accent-button"
             disabled={!canEdit}
             onClick={onCreate}
           >
             + Новая задача
-          </button>
+          </button>}
         </div>
       </header>
       <nav className="tracker-tabs" aria-label="Разделы">
@@ -676,11 +676,11 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
                           </select>
                           <button
                             className="edit-task-button"
-                            aria-label={`Редактировать задачу ${task.id}`}
-                            title="Редактировать карточку"
+                            aria-label={`${canEdit ? "Редактировать" : "Просмотреть"} задачу ${task.id}`}
+                            title={canEdit ? "Редактировать карточку" : "Просмотреть карточку"}
                             onClick={() => openTask(task)}
                           >
-                            <Pencil size={14} />
+                            {canEdit ? <Pencil size={14} /> : <Eye size={14} />}
                           </button>
                         </div>
                         <div className="task-timeline" style={gridStyle}>
@@ -689,14 +689,15 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
                               <div
                                 className="gantt-bar"
                                 role="button"
-                                tabIndex={canEdit && !saving ? 0 : -1}
-                                aria-label={`Редактировать задачу ${task.id} на Ганте`}
-                                aria-disabled={!canEdit || saving}
+                                tabIndex={!saving ? 0 : -1}
+                                aria-label={`${canEdit ? "Редактировать" : "Просмотреть"} задачу ${task.id} на Ганте`}
+                                aria-disabled={saving}
                                 style={{
                                   left,
                                   width: barWidth,
                                   background: colors[task.status],
                                   color: task.status === "разработка" ? "#fff" : "#24231f",
+                                  cursor: canEdit ? "grab" : "pointer",
                                 }}
                                 onPointerDown={(e) =>
                                   startDrag(e, task, "move")
@@ -715,10 +716,10 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (suppressBarClick.current) { suppressBarClick.current = false; return; }
-                                  if (canEdit && !saving) openTask(task);
+                                  if (!saving) openTask(task);
                                 }}
                                 onKeyDown={(e) => {
-                                  if ((e.key === "Enter" || e.key === " ") && canEdit && !saving) {
+                                  if ((e.key === "Enter" || e.key === " ") && !saving) {
                                     e.preventDefault();
                                     openTask(task);
                                   }
@@ -726,18 +727,18 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
                                 title={`${task.title}: ${start} → ${end}`}
                               >
                                 <span className="gantt-bar-label">{task.title}</span>
-                                <span
+                                {canEdit && <span
                                   className="bar-handle left"
                                   onPointerDown={(e) =>
                                     startDrag(e, task, "start")
                                   }
-                                />
-                                <span
+                                />}
+                                {canEdit && <span
                                   className="bar-handle right"
                                   onPointerDown={(e) =>
                                     startDrag(e, task, "end")
                                   }
-                                />
+                                />}
                               </div>
                               <a className="bar-jira-link" href={jiraUrl} target="_blank" rel="noopener noreferrer"
                                 aria-label={`Открыть задачу ${task.id} в Jira из Ганта`} aria-disabled={!jiraUrl}
@@ -751,7 +752,7 @@ export const TrackerWorkspace = memo(function TrackerWorkspace({
                               className="timeline-note"
                               onClick={() => openTask(task)}
                             >
-                              Задать даты
+                              {canEdit ? "Задать даты" : "Просмотреть"}
                             </button>
                           )}
                         </div>

@@ -9,7 +9,7 @@ export function DownloadLink({ doc }: { doc: TaskDocument }) {
   return <div>{doc.file_name ? <button type="button" onClick={() => void downloadDocument(doc).catch(e => setError(e.message))}>Скачать ↗</button> : doc.source_url ? <a href={doc.source_url} target="_blank" rel="noopener noreferrer">Открыть ↗</a> : null}{error && <span role="alert">{error}</span>}</div>;
 }
 
-export function ApprovedDocument({ taskId }: { taskId: number }) {
+export function ApprovedDocument({ taskId, readOnly = false }: { taskId: number; readOnly?: boolean }) {
   const { refreshFromApi } = useApp();
   const [doc, setDoc] = useState<TaskDocument | null>(null), [loading, setLoading] = useState(true);
   const [upload, setUpload] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
@@ -28,6 +28,7 @@ export function ApprovedDocument({ taskId }: { taskId: number }) {
   }, [taskId]);
   const resetKey = () => { key.current = null; };
   const save = async () => {
+    if (readOnly) return;
     setBusy(true); setError("");
     try {
       if (file && file.size > 10485760) throw new Error("Максимальный размер файла — 10 МБ");
@@ -48,8 +49,8 @@ export function ApprovedDocument({ taskId }: { taskId: number }) {
   return <details open className="approved-document"><summary>Согласованный документ</summary>
     <div className="approved-document-content">{loading ? <p role="status">Загрузка…</p> : doc ? <article className="document-compact"><b>{doc.title}</b><small>{doc.approved_at ? `Согласован ${new Date(doc.approved_at).toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })}` : "Согласован; дата согласования неизвестна"}</small><DownloadLink doc={doc} /></article> : <p className="muted">Документ не добавлен</p>}</div>
     {error && <p role="alert" className="tracker-error">{error}</p>}
-    {!upload && <button type="button" onClick={() => setUpload(true)}>{doc ? "Заменить документ" : "Добавить документ"}</button>}
-    {upload && <fieldset disabled={busy} className="document-upload form-grid">
+    {!readOnly && !upload && <button type="button" onClick={() => setUpload(true)}>{doc ? "Заменить документ" : "Добавить документ"}</button>}
+    {!readOnly && upload && <fieldset disabled={busy} className="document-upload form-grid">
       <label>Файл<input type="file" accept=".pdf,.doc,.docx,.docm,.xls,.xlsx,.txt,.png,.jpg,.jpeg" onChange={e => { const f = e.target.files?.[0] || null; setFile(f); if (f && !title) setTitle(f.name); resetKey(); }} /></label>
       <label>Ссылка<input type="url" value={link} onChange={e => { setLink(e.target.value); resetKey(); }} /></label>
       <label>Название<input value={title} onChange={e => { setTitle(e.target.value); resetKey(); }} /></label>

@@ -11,6 +11,7 @@ import {
   PRIORITY_RU_TO_API,
   TaskHistoryEntry,
 } from "./types"
+import type { AccessRole } from "./permissions"
 
 /* ===================== BASE ===================== */
 
@@ -194,6 +195,7 @@ export type Me = {
   role_text?: string | null
   telegram_id?: string | null
   is_superadmin?: boolean
+  access_role?: AccessRole
 }
 
 export type AuthenticatedUserResponse = Me & {
@@ -215,6 +217,7 @@ export type ApiUser = {
   role_text?: string
   telegram_id?: string | null
   is_superadmin?: boolean
+  access_role?: AccessRole
 }
 
 export type TaskExportField =
@@ -335,16 +338,16 @@ export async function getUsers() {
   return request<ApiUser[]>("/users")
 }
 
-export async function createUser(name: string, roleText = "") {
-  return request<{ id: number }>("/users", {
+export async function createUser(name: string, roleText = "", accessRole: AccessRole = "editor", account?: { login: string; password: string }) {
+  return request<ApiUser>("/users", {
     method: "POST",
-    body: JSON.stringify({ name, role_text: roleText }),
+    body: JSON.stringify({ name, role_text: roleText, access_role: accessRole, ...account }),
   })
 }
 
 export async function updateUser(
   id: number | string,
-  payload: { name?: string; role_text?: string },
+  payload: { name?: string; role_text?: string; access_role?: AccessRole },
 ) {
   return request<ApiUser>(`/users/${id}`, {
     method: "PATCH",

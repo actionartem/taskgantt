@@ -300,7 +300,7 @@ export function AttentionView({
   );
 }
 
-export const TaskDetails = memo(function TaskDetails({ taskId }: { taskId: number }) {
+export const TaskDetails = memo(function TaskDetails({ taskId, readOnly = false }: { taskId: number; readOnly?: boolean }) {
   const [historyOpen, setHistoryOpen] = useState(false), [analysisOpen, setAnalysisOpen] = useState(false);
   const [jira, setJira] = useState<JiraSnapshot | null>(null), [error, setError] = useState("");
   useEffect(() => {
@@ -328,6 +328,6 @@ export const TaskDetails = memo(function TaskDetails({ taskId }: { taskId: numbe
         {az.epic_url && <a href={az.epic_url} target="_blank" rel="noreferrer">Эпик {az.epic_key} ↗</a>}
       </div> : <p>Агент привяжет дочернюю задачу по АЗ.</p>}
     </details>
-    <ApprovedDocument taskId={taskId} />
+    <ApprovedDocument taskId={taskId} readOnly={readOnly} />
   </div>;
 });

@@ -18,6 +18,8 @@ export interface Executor {
   id: number;       // из API приходит number
   name: string;
   role?: string | null; // role_text
+  accessRole?: "editor" | "viewer" | "incident_editor";
+  isSuperadmin?: boolean;
 }
 
 export interface Task {

@@ -240,7 +240,7 @@ export function ProfileModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="profile-role">Роль</Label>
+            <Label htmlFor="profile-role">Должность</Label>
             <Input
               id="profile-role"
               value={roleText}
