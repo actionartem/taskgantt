@@ -30,7 +30,6 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
   const [priority, setPriority] = useState("")
-  const [deferral, setDeferral] = useState("")
   const [today, setToday] = useState(() => incidentDay(new Date()))
   const [month, setMonth] = useState(() => incidentDay(new Date()).slice(0, 7))
   const [selectedDay, setSelectedDay] = useState(() => incidentDay(new Date()))
@@ -69,8 +68,8 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
 
   const visible = useMemo(() => items.filter(i =>
     (!search.trim() || `${i.number} ${i.jira_url}`.toLocaleLowerCase("ru").includes(search.trim().toLocaleLowerCase("ru"))) &&
-    (!priority || i.priority === priority) && (!deferral || i.is_deferred === (deferral === "yes")),
-  ).sort((a, b) => +new Date(incidentDeadline(a)) - +new Date(incidentDeadline(b)) || a.number.localeCompare(b.number, "ru", { numeric: true })), [items, search, priority, deferral])
+    (!priority || i.priority === priority),
+  ).sort((a, b) => +new Date(incidentDeadline(a)) - +new Date(incidentDeadline(b)) || a.number.localeCompare(b.number, "ru", { numeric: true })), [items, search, priority])
   const byDay = useMemo(() => {
     const map = new Map<string, Incident[]>()
     for (const item of visible) {
@@ -156,9 +155,7 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
     <div className="tracker-filters incidents-filters">
       <input aria-label="Поиск инцидентов" placeholder="Номер инцидента или Jira" value={search} onChange={e => setSearch(e.target.value)} />
       <select aria-label="Приоритет" value={priority} onChange={e => setPriority(e.target.value)}><option value="">Приоритет: все</option>{Object.entries(INCIDENT_PRIORITIES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
-      <select aria-label="Отложенные инциденты" value={deferral} onChange={e => setDeferral(e.target.value)}><option value="">Отложены: все</option><option value="yes">Уже отложены</option><option value="no">Ещё не отложены</option></select>
-      {(search || priority || deferral) && <button onClick={() => { setSearch(""); setPriority(""); setDeferral("") }}>Сбросить фильтры</button>}
-      <button className="incidents-refresh" disabled={loading} onClick={() => void refresh()}>{loading ? "Обновление…" : "Обновить"}</button>
+      {(search || priority) && <button onClick={() => { setSearch(""); setPriority("") }}>Сбросить фильтры</button>}
     </div>
     {error && <div className="tracker-error" role="alert">{loaded ? "Данные могли устареть. " : "Не удалось загрузить инциденты. "}{error}</div>}
     <main className="incidents-layout" aria-label="Инциденты и календарь">
@@ -177,8 +174,8 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
         </table></div>
         {!visible.length && <div className="incidents-empty" role="status">{loading && !loaded ? "Загружаем инциденты…" : !loaded ? "Список недоступен. Попробуйте обновить данные." : items.length ? "Нет инцидентов по выбранным фильтрам" : "Инцидентов пока нет"}</div>}
       </section>
-      <section className="incidents-calendar-panel" aria-label="Календарь сроков">
-        <div className="incidents-calendar-heading"><h2>Календарь сроков</h2><button onClick={() => { const now = incidentDay(new Date()); setToday(now); setMonth(now.slice(0, 7)); setSelectedDay(now); setSelected(null) }}>Сегодня</button></div>
+      <section className="incidents-calendar-panel" aria-label="Календарь инцидентов">
+        <div className="incidents-calendar-heading"><h2>Календарь инцидентов</h2></div>
         <div className="incidents-month-nav"><button aria-label="Предыдущий месяц" disabled={month <= "2000-01"} onClick={() => setMonth(shiftIncidentMonth(month, -1))}><ChevronLeft size={18} /></button><h3 aria-live="polite">{monthLabel(month)}</h3><button aria-label="Следующий месяц" disabled={month >= "2100-12"} onClick={() => setMonth(shiftIncidentMonth(month, 1))}><ChevronRight size={18} /></button></div>
         <div className="incidents-weekdays" aria-hidden="true">{["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map(day => <span key={day}>{day}</span>)}</div>
         <div className="incidents-calendar-grid">
@@ -189,7 +186,6 @@ export function IncidentsWorkspace({ onProfile, canEdit }: { onProfile: () => vo
             </button>
           })}
         </div>
-        <p className="incidents-calendar-key"><span className="incident-dot" />Срок сгорания или «Отложен до» · МСК</p>
         <div className="incidents-day-list" aria-live="polite"><h3>{dayLabel(selectedDay)} <span>{dayItems.length}</span></h3>
           {!dayItems.length && <p className="incidents-day-empty">{loaded ? "На эту дату сроков нет" : "Данные ещё не загружены"}</p>}
           {dayItems.map(i => <div key={i.id} className={`incident-day-item ${selected === i.id ? "is-selected" : ""}`}>

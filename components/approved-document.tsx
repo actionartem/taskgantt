@@ -13,7 +13,7 @@ export function ApprovedDocument({ taskId, readOnly = false }: { taskId: number;
   const { refreshFromApi } = useApp();
   const [doc, setDoc] = useState<TaskDocument | null>(null), [loading, setLoading] = useState(true);
   const [upload, setUpload] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
-  const [title, setTitle] = useState(""), [approvedDate, setApprovedDate] = useState(""), [link, setLink] = useState("");
+  const [title, setTitle] = useState(""), [link, setLink] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const key = useRef<{ id: string; at: string } | null>(null);
   const load = useCallback(async () => {
@@ -38,24 +38,24 @@ export function ApprovedDocument({ taskId, readOnly = false }: { taskId: number;
       }) : undefined;
       const event = key.current ??= { id: crypto.randomUUID(), at: new Date().toISOString() };
       await request(`/tasks/${taskId}/documents/approved`, { method: "POST", body: JSON.stringify({
+        replace_current: true,
         event: { external_id: event.id, type: "document.approved", summary: `Добавлен согласованный документ: ${title}`, occurred_at: event.at },
-        document: { title, approved_at: new Date(approvedDate + "T00:00:00").toISOString(), approval_evidence: "Загружен пользователем как согласованный", source_url: link || null, file_name: file?.name, file_base64 },
+        document: { title, approved_at: null, approval_date_unknown: true, approval_evidence: "Загружен пользователем как актуальный согласованный документ; дата согласования не указана", source_url: link || null, file_name: file?.name, file_base64 },
       }) });
-      await load(); setUpload(false); setFile(null); setTitle(""); setLink(""); setApprovedDate(""); resetKey();
+      await load(); setUpload(false); setFile(null); setTitle(""); setLink(""); resetKey();
       void refreshFromApi().catch(() => {});
     } catch (e) { setError(e instanceof Error ? e.message : "Не удалось сохранить документ"); }
     finally { setBusy(false); }
   };
   return <details open className="approved-document"><summary>Согласованный документ</summary>
-    <div className="approved-document-content">{loading ? <p role="status">Загрузка…</p> : doc ? <article className="document-compact"><b>{doc.title}</b><small>{doc.approved_at ? `Согласован ${new Date(doc.approved_at).toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })}` : "Согласован; дата согласования неизвестна"}</small><DownloadLink doc={doc} /></article> : <p className="muted">Документ не добавлен</p>}</div>
+    <div className="approved-document-content">{loading ? <p role="status">Загрузка…</p> : doc ? <article className="document-compact"><b>{doc.title}</b><DownloadLink doc={doc} /></article> : <p className="muted">Документ не добавлен</p>}</div>
     {error && <p role="alert" className="tracker-error">{error}</p>}
     {!readOnly && !upload && <button type="button" onClick={() => setUpload(true)}>{doc ? "Заменить документ" : "Добавить документ"}</button>}
     {!readOnly && upload && <fieldset disabled={busy} className="document-upload form-grid">
       <label>Файл<input type="file" accept=".pdf,.doc,.docx,.docm,.xls,.xlsx,.txt,.png,.jpg,.jpeg" onChange={e => { const f = e.target.files?.[0] || null; setFile(f); if (f && !title) setTitle(f.name); resetKey(); }} /></label>
       <label>Ссылка<input type="url" value={link} onChange={e => { setLink(e.target.value); resetKey(); }} /></label>
       <label>Название<input value={title} onChange={e => { setTitle(e.target.value); resetKey(); }} /></label>
-      <label>Дата согласования<input type="date" value={approvedDate} onChange={e => { setApprovedDate(e.target.value); resetKey(); }} /></label>
-      <button type="button" disabled={busy || !title.trim() || !approvedDate || (!file && !link)} onClick={() => void save()}>{busy ? "Сохранение…" : "Сохранить документ"}</button>
+      <button type="button" disabled={busy || !title.trim() || (!file && !link)} onClick={() => void save()}>{busy ? "Сохранение…" : "Сохранить документ"}</button>
       <button type="button" disabled={busy} onClick={() => setUpload(false)}>Отмена</button>
     </fieldset>}
   </details>;

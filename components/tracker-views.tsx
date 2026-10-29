@@ -86,7 +86,6 @@ export function DocumentsView({
               </b>
               <small>{tasks.find(t => t.id === Number(d.task_id))?.title}</small>
             </div>
-            <span>{d.approved_at ? `Согласован ${new Date(d.approved_at).toLocaleDateString("ru-RU", {timeZone:"Europe/Moscow"})}` : "Согласован; дата согласования неизвестна"}</span>
             <DownloadLink doc={d} />
           </article>
         ))
